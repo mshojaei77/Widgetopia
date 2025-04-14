@@ -1,0 +1,46 @@
+/* Base styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #4a8af4, #6b5bf2);
+  color: #333;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-header {
+  text-align: center;
+  padding: 20px 0;
+  color: white;
+}
+
+.app-header h1 {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.greeting {
+  font-size: 1.2rem;
+  opacity: 0.9;
+}
+
+.app-footer {
+  margin-top: auto;
+  text-align: center;
+  padding: 20px 0;
+  color: white;
+  opacity: 0.7;
+  font-size: 0.9rem;
+} 
