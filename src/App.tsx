@@ -181,10 +181,21 @@ const App: React.FC = () => {
     // Add props for other widgets like Weather if needed
 
     return (
-      <Grid item key={widgetId} xs={12} sm={6} md={widgetId === 'quicklinks' ? 12 : 4} lg={widgetId === 'quicklinks' ? 8 : 3}>
+      <Box 
+        key={widgetId} 
+        sx={{ 
+          width: { 
+            xs: '100%', 
+            sm: '50%', 
+            md: widgetId === 'quicklinks' ? '100%' : '33.33%',
+            lg: widgetId === 'quicklinks' ? '66.66%' : '25%' 
+          },
+          padding: 1 
+        }}
+      >
          {/* Apply glass styling implicitly via component's root or explicitly here if needed */}
         <WidgetComponent {...widgetProps} />
-      </Grid>
+      </Box>
     );
   };
 

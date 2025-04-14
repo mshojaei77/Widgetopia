@@ -141,11 +141,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 borderRadius: 'var(--radius-lg)',
                 padding: 0,
                 overflow: 'hidden',
-                background: 'rgba(15, 15, 20, 0.6)',
-                backdropFilter: 'blur(30px)',
-                WebkitBackdropFilter: 'blur(30px)',
-                boxShadow: '0 15px 40px rgba(0, 0, 0, 0.4)',
-                border: '1px solid rgba(255, 255, 255, 0.2)'
+                background: 'rgba(10, 10, 15, 0.97) !important',
+                backdropFilter: 'blur(8px) !important',
+                WebkitBackdropFilter: 'blur(8px) !important',
+                boxShadow: '0 15px 40px rgba(0, 0, 0, 0.5) !important',
+                border: '1px solid rgba(255, 255, 255, 0.05) !important'
               }}
             >
               <Box sx={{ 
@@ -154,7 +154,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 alignItems: 'center', 
                 p: 2.5, 
                 borderBottom: 1, 
-                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderColor: 'rgba(255, 255, 255, 0.05)',
                 position: 'relative',
               }}>
                 <Typography 
@@ -186,7 +186,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               </Box>
 
               <Box sx={{ width: '100%' }}>
-                <Box sx={{ borderBottom: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                <Box sx={{ borderBottom: 1, borderColor: 'rgba(255, 255, 255, 0.05)' }}>
                   <Tabs 
                     value={tabValue} 
                     onChange={handleTabChange} 
@@ -250,11 +250,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         placeholder="Enter your name"
                         sx={{
                           '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.07)',
-                            backdropFilter: 'blur(10px)',
-                            WebkitBackdropFilter: 'blur(10px)',
+                            backgroundColor: 'rgba(30, 30, 40, 0.7)',
+                            backdropFilter: 'blur(5px)',
+                            WebkitBackdropFilter: 'blur(5px)',
                             '& fieldset': {
-                              borderColor: 'rgba(255, 255, 255, 0.15)',
+                              borderColor: 'rgba(255, 255, 255, 0.1)',
                               transition: 'all 0.3s ease',
                             },
                             '&:hover fieldset': {
@@ -306,7 +306,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                 mb: 0.5,
                                 transition: 'all 0.2s ease',
                                 '&:hover': {
-                                  backgroundColor: 'rgba(255, 255, 255, 0.07)'
+                                  backgroundColor: 'rgba(40, 40, 50, 0.7)'
                                 }
                               }}
                             >

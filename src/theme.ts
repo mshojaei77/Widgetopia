@@ -81,13 +81,12 @@ let darkTheme = createTheme(deepmerge(commonSettings, darkPalette));
 // Apply responsive font sizes
 lightTheme = responsiveFontSizes(lightTheme);
 darkTheme = responsiveFontSizes(darkTheme);
-
-// Define the core colors based on the "dark glass" aesthetic
-const primaryTextColor = '#E0E0E0'; // Light grey for primary text
-const secondaryTextColor = '#B0B0B0'; // Slightly darker grey for secondary text
-const widgetBgColor = 'rgba(0, 0, 0, 0.3)'; // Dark semi-transparent background
-const widgetBorderColor = 'rgba(255, 255, 255, 0.1)'; // Subtle white border
-const blurAmount = '10px'; // Adjust blur intensity as needed
+// Define the core colors based on the "glass" aesthetic
+const primaryTextColor = '#F0F0F0'; // Lighter grey for primary text
+const secondaryTextColor = '#C0C0C0'; // Slightly lighter grey for secondary text
+const widgetBgColor = 'rgba(30, 30, 40, 0.2)'; // Even less dark semi-transparent background
+const widgetBorderColor = 'rgba(255, 255, 255, 0.08)'; // More subtle white border
+const blurAmount = '4px'; // Further reduced blur intensity
 
 const theme = createTheme({
   palette: {

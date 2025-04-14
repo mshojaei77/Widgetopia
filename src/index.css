@@ -25,9 +25,9 @@
   --radius-lg: 20px; /* Larger radius like image */
 
   /* Enhanced Glass Effect */
-  --glass-bg: rgba(15, 15, 20, 0.5); /* Darker, moderately transparent glass */
-  --glass-border: rgba(255, 255, 255, 0.2); /* More visible white border */
-  --blur-amount: 30px; /* Increased blur intensity */
+  --glass-bg: rgba(10, 10, 15, 0.99); /* Increased alpha from 0.75 to 0.85 for darker widgets */
+  --glass-border: rgba(255, 255, 255, 0.05); /* More subtle white border */
+  --blur-amount: 8px; /* Reduced blur intensity */
   
   /* Animations */
   --transition-fast: 0.2s;
@@ -121,15 +121,6 @@ body::before {
 }
 
 /* MUI Overrides - Ensure they use new variables and glass */
-.MuiPaper-root {
-  /* Let the 'glass' class handle background/blur/border */
-  background-color: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: none !important;
-  color: var(--text-light) !important;
-}
-
 .MuiInputBase-root, .MuiOutlinedInput-root {
   background-color: rgba(255, 255, 255, 0.05) !important; /* Lighter input background */
   border-radius: var(--radius-md) !important;
@@ -178,4 +169,11 @@ body::before {
 .search-bar .MuiInputBase-root:focus-within {
   background-color: rgba(255, 255, 255, 0.15) !important;
   box-shadow: 0 0 20px rgba(138, 180, 248, 0.4) !important;
-} 
+}
+
+/* Example: Style specific MUI components if needed beyond the theme */
+/*
+.MuiButton-containedPrimary {
+  background-color: var(--primary-color) !important;
+}
+*/ 
