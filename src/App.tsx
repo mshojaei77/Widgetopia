@@ -241,7 +241,12 @@ const App: React.FC = () => {
       
       {/* Render QuickLinks separately above the grid if visible */}
       {widgetVisibility.quicklinks && (
-          <Box sx={{ width: '100%', maxWidth: '800px', mb: 3 }}>
+          <Box sx={{ 
+            width: '100%', 
+            maxWidth: '900px',
+            mb: 3,
+            mt: 1
+          }}>
               <QuickLinks links={quickLinks} setLinks={setQuickLinks} onShowAddForm={handleShowAddLinkForm} />
           </Box>
       )}

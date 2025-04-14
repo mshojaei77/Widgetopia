@@ -1,6 +1,6 @@
-import React from 'react';
-import { Box, Typography, IconButton, Paper, Tooltip } from '@mui/material';
-import { Add as AddIcon, DeleteOutline as DeleteIcon } from '@mui/icons-material';
+import React, { useState } from 'react';
+import { Box, Typography, IconButton, Paper, Tooltip, Button } from '@mui/material';
+import { Add as AddIcon, DeleteOutline as DeleteIcon, Edit as EditIcon, Check as CheckIcon } from '@mui/icons-material';
 import type { QuickLink } from '../types';
 
 interface QuickLinksProps {
@@ -10,6 +10,7 @@ interface QuickLinksProps {
 }
 
 const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm }) => {
+  const [editMode, setEditMode] = useState(false);
   
   const deleteLink = (id: number) => {
     setLinks(prevLinks => prevLinks.filter(link => link.id !== id));
@@ -24,11 +25,29 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm 
         <img
           src={link.icon}
           alt=""
-          style={{ width: '24px', height: '24px', objectFit: 'contain' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
       );
     }
-    // Render first character (or emoji) if not a favicon URL
+    
+    // If link.icon is an emoji or a short text, render it directly without modification
+    if (link.icon && link.icon.length <= 2) {
+      return (
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            color: '#fff', 
+            fontWeight: 'bold',
+            fontSize: '1.5rem',
+            fontFamily: '"Segoe UI Emoji", "Segoe UI Symbol", "Apple Color Emoji", "Noto Color Emoji", sans-serif'
+          }}
+        >
+          {link.icon}
+        </Typography>
+      );
+    }
+    
+    // Fallback to first character of title
     return (
       <Typography variant="body1" sx={{ color: '#fff', fontWeight: 'bold' }}>
         {link.icon ? link.icon.charAt(0).toUpperCase() : link.title.charAt(0).toUpperCase()}
@@ -41,21 +60,71 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm 
       elevation={0} 
       className="glass" 
       sx={{ 
-        p: 2, 
+        py: 2, 
+        px: 2,
         borderRadius: 'var(--radius-lg)',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        gap: 2,
+        justifyContent: 'center',
+        position: 'relative',
       }}
     >
-      <Typography variant="h6" component="h2" sx={{ mr: 2, flexShrink: 0 }}>
-        Quick Links
-      </Typography>
+      <Tooltip title={editMode ? "Done editing" : "Edit quick links"}>
+        <IconButton 
+          onClick={() => setEditMode(!editMode)}
+          size="small"
+          sx={{
+            position: 'absolute',
+            top: 4,
+            right: 4,
+            bgcolor: editMode ? 'rgba(76, 175, 80, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+            color: editMode ? 'rgba(76, 175, 80, 0.9)' : 'rgba(255, 255, 255, 0.5)',
+            '&:hover': {
+              bgcolor: editMode ? 'rgba(76, 175, 80, 0.25)' : 'rgba(255, 255, 255, 0.15)',
+            },
+            transition: 'all 0.2s ease-out',
+            width: 16,
+            height: 16,
+            padding: '2px',
+            minWidth: '16px',
+            minHeight: '16px',
+          }}
+        >
+          {editMode ? <CheckIcon sx={{ fontSize: 12 }} /> : <EditIcon sx={{ fontSize: 12 }} />}
+        </IconButton>
+      </Tooltip>
 
-      <Box sx={{ display: 'flex', flexWrap: 'nowrap', gap: 1.5, overflowX: 'auto' }}>
+      <Box sx={{ 
+        display: 'flex', 
+        flexWrap: 'nowrap', 
+        gap: 1.5, 
+        overflowX: 'auto', 
+        width: '100%',
+        justifyContent: 'center',
+        py: 1.5,
+        pb: 0.5,
+        '::-webkit-scrollbar': {
+          height: '4px',
+        },
+        '::-webkit-scrollbar-track': {
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          borderRadius: '10px',
+        },
+        '::-webkit-scrollbar-thumb': {
+          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+          borderRadius: '10px',
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.25)',
+          },
+        },
+      }}>
         {links.map((link: QuickLink) => {
           const isFavicon = link.icon && (link.icon.startsWith('http') || link.icon.startsWith('data:image'));
-          const bubbleBgColor = isFavicon ? 'rgba(255, 255, 255, 0.9)' : (link.color || 'rgba(255, 255, 255, 0.2)');
+          const isEmoji = link.icon && link.icon.length <= 2 && !isFavicon;
+          const bubbleBgColor = isFavicon 
+            ? 'rgba(255, 255, 255, 0.9)' 
+            : (link.color || 'rgba(255, 255, 255, 0.2)');
 
           return (
             <Box key={link.id} sx={{ position: 'relative' }}>
@@ -70,20 +139,27 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm 
                     alignItems: 'center',
                     justifyContent: 'center',
                     textDecoration: 'none',
-                    width: 48,
-                    height: 48,
+                    width: 52,
+                    height: 52,
                     borderRadius: 'var(--radius-md)',
                     bgcolor: bubbleBgColor,
-                    transition: 'transform 0.2s ease-out, background-color 0.2s ease-out',
+                    transition: 'transform 0.2s ease-out, background-color 0.2s ease-out, box-shadow 0.2s ease-out',
                     overflow: 'hidden',
-                    border: isFavicon ? '1px solid rgba(0,0,0,0.05)' : '1px solid rgba(255, 255, 255, 0.1)',
+                    border: isFavicon ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
                     position: 'relative',
+                    padding: 0,
                     '&:hover .delete-button': {
-                      opacity: 1,
+                      opacity: editMode ? 1 : 0.8,
                     },
                     '&:hover': {
-                      transform: 'scale(1.08)'
-                    }
+                      transform: 'scale(1.08)',
+                      boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)'
+                    },
+                    // Add extra styling for emoji icons to improve rendering
+                    ...(isEmoji && {
+                      fontFamily: '"Segoe UI Emoji", "Segoe UI Symbol", "Apple Color Emoji", "Noto Color Emoji", sans-serif',
+                      fontSize: '1.5rem',
+                    })
                   }}
                 >
                   {renderIconContent(link)}
@@ -104,7 +180,7 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm 
                   right: -5,
                   bgcolor: 'rgba(255, 82, 82, 0.85)',
                   color: 'white',
-                  opacity: 0,
+                  opacity: editMode ? 1 : 0,
                   transition: 'opacity 0.2s ease-in-out',
                   width: 18,
                   height: 18,
@@ -125,16 +201,17 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm 
               onClick={onShowAddForm}
               aria-label="Add new quick link"
               sx={{
-                width: 48,
-                height: 48,
+                width: 52,
+                height: 52,
                 borderRadius: 'var(--radius-md)',
                 bgcolor: 'rgba(255, 255, 255, 0.15)',
                 color: 'var(--text-light)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
-                transition: 'transform 0.2s ease-out, background-color 0.2s ease-out',
+                transition: 'transform 0.2s ease-out, background-color 0.2s ease-out, box-shadow 0.2s ease-out',
                 '&:hover': {
                   bgcolor: 'rgba(255, 255, 255, 0.25)',
-                  transform: 'scale(1.08)'
+                  transform: 'scale(1.08)',
+                  boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)'
                 }
               }}
             >
