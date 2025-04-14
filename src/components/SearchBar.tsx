@@ -15,44 +15,42 @@ const SearchBar: React.FC = () => {
   };
 
   return (
-    <motion.div
+    <motion.form
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, type: 'spring', stiffness: 120 }}
-      className="search-bar"
+      onSubmit={handleSearch}
+      style={{
+        width: '100%',
+        maxWidth: '600px',
+        marginBottom: '24px',
+      }}
     >
       <Paper
-        component="form"
-        onSubmit={handleSearch}
         className={`glass ${isFocused ? 'focused' : ''}`}
         sx={{
           p: '6px 16px',
           display: 'flex',
           alignItems: 'center',
           width: '100%',
-          maxWidth: '600px',
-          mb: 3,
           borderRadius: '30px',
           transition: 'all 0.3s ease',
-          border: isFocused 
-            ? '1px solid rgba(138, 180, 248, 0.5)' 
-            : '1px solid var(--glass-border)',
-          boxShadow: isFocused 
-            ? '0 0 20px rgba(138, 180, 248, 0.4)' 
+          boxShadow: isFocused
+            ? '0 0 20px rgba(138, 180, 248, 0.4)'
             : 'var(--shadow-md)',
           '&:hover': {
-            boxShadow: isFocused 
-              ? '0 0 25px rgba(138, 180, 248, 0.5)' 
+            boxShadow: isFocused
+              ? '0 0 25px rgba(138, 180, 248, 0.5)'
               : '0 5px 15px rgba(0, 0, 0, 0.2)',
           }
         }}
       >
-        <IconButton 
-          sx={{ 
-            p: '10px', 
+        <IconButton
+          sx={{
+            p: '10px',
             color: isFocused ? 'var(--primary-color)' : 'var(--text-light)',
             transition: 'all 0.3s ease',
-          }} 
+          }}
           aria-label="search"
         >
           <SearchIcon />
@@ -61,15 +59,18 @@ const SearchBar: React.FC = () => {
           name="query"
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          sx={{ 
-            ml: 1.5, 
-            flex: 1, 
+          sx={{
+            ml: 1.5,
+            flex: 1,
             color: 'var(--text-light)',
             fontSize: '1rem',
             fontWeight: isFocused ? 400 : 300,
             letterSpacing: '0.2px',
             backgroundColor: 'transparent !important',
             transition: 'all 0.3s ease',
+            '& input': {
+              outline: 'none',
+            },
             '& input::placeholder': {
               color: isFocused ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.7)',
               opacity: 1,
@@ -77,10 +78,13 @@ const SearchBar: React.FC = () => {
             },
           }}
           placeholder="Search Google..."
-          inputProps={{ 'aria-label': 'search google' }}
+          inputProps={{
+            'aria-label': 'search google',
+            autoComplete: 'off'
+          }}
         />
       </Paper>
-    </motion.div>
+    </motion.form>
   );
 };
 

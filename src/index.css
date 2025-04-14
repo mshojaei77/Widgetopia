@@ -125,13 +125,16 @@ body::before {
   background-color: rgba(255, 255, 255, 0.05) !important; /* Lighter input background */
   border-radius: var(--radius-md) !important;
   color: var(--text-light) !important;
-  border: 1px solid var(--glass-border) !important;
+  /* Remove the redundant border that conflicts with Paper's border */
+  /* border: 1px solid var(--glass-border) !important; */
   transition: all var(--transition-fast) ease !important;
 }
 
 .MuiInputBase-root:focus-within, .MuiOutlinedInput-root:focus-within {
+  /* Keep border-color change on focus for visual feedback */
   border-color: var(--primary-color) !important;
-  box-shadow: 0 0 10px rgba(138, 180, 248, 0.3) !important;
+  /* Remove the box-shadow here, the SearchBar component handles its own focus shadow */
+  /* box-shadow: 0 0 10px rgba(138, 180, 248, 0.3) !important; */
 }
 
 /* Remove default fieldset border if needed */
@@ -158,17 +161,20 @@ body::before {
   width: 100%;
   max-width: 600px;
   position: relative;
-  margin: 1rem auto;
+  margin: 1rem auto; /* This margin is handled by motion.form style now */
 }
 
 .search-bar .MuiInputBase-root {
-  background-color: rgba(255, 255, 255, 0.1) !important;
+  /* Remove background override, SearchBar sets its own */
+  /* background-color: rgba(255, 255, 255, 0.1) !important; */
   transition: all var(--transition-normal) ease !important;
 }
 
 .search-bar .MuiInputBase-root:focus-within {
-  background-color: rgba(255, 255, 255, 0.15) !important;
-  box-shadow: 0 0 20px rgba(138, 180, 248, 0.4) !important;
+  /* Remove background override, SearchBar sets its own */
+  /* background-color: rgba(255, 255, 255, 0.15) !important; */
+  /* Remove shadow override, SearchBar handles its own focus shadow via Paper sx */
+  /* box-shadow: 0 0 20px rgba(138, 180, 248, 0.4) !important; */
 }
 
 /* Example: Style specific MUI components if needed beyond the theme */
