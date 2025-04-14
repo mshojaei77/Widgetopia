@@ -1,0 +1,439 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Modal, Box, Paper, Typography, List, ListItem, ListItemText, Switch, IconButton, Divider,
+  Tab, Tabs, TextField
+} from '@mui/material';
+import { Grid } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface SettingsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  widgetVisibility: Record<string, boolean>;
+  onVisibilityChange: (widgetId: string) => void;
+  availableWidgets: { id: string; name: string }[];
+  currentWallpaper: string;
+  onWallpaperChange: (wallpaper: string) => void;
+}
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+// Available wallpapers (these will be stored in public/wallpapers)
+const WALLPAPERS = [
+  { id: 'default', name: 'Default', path: '/wallpapers/default.jpg' },
+  { id: 'mountains', name: 'Mountains', path: '/wallpapers/mountains.jpg' },
+  { id: 'ocean', name: 'Ocean', path: '/wallpapers/ocean.jpg' },
+  { id: 'forest', name: 'Forest', path: '/wallpapers/forest.jpg' },
+  { id: 'night', name: 'Night Sky', path: '/wallpapers/night.jpg' },
+];
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`settings-tabpanel-${index}`}
+      aria-labelledby={`settings-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 2 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
+
+const SettingsModal: React.FC<SettingsModalProps> = ({
+  isOpen,
+  onClose,
+  widgetVisibility,
+  onVisibilityChange,
+  availableWidgets,
+  currentWallpaper,
+  onWallpaperChange,
+}) => {
+  const [tabValue, setTabValue] = useState(0);
+  const [userName, setUserName] = useState(() => {
+    return localStorage.getItem('userName') || 'Alex';
+  });
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+  
+  const handleUserNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setUserName(event.target.value);
+  };
+  
+  const handleUserNameSave = () => {
+    localStorage.setItem('userName', userName);
+  };
+
+  // Animation variants
+  const modalVariants = {
+    hidden: { opacity: 0, scale: 0.9 },
+    visible: { 
+      opacity: 1, 
+      scale: 1,
+      transition: { 
+        duration: 0.3,
+        type: "spring",
+        stiffness: 300,
+        damping: 30
+      }
+    },
+    exit: { 
+      opacity: 0, 
+      scale: 0.9,
+      transition: { duration: 0.2 } 
+    }
+  };
+
+  const wallpaperItemVariants = {
+    initial: { opacity: 0, y: 10 },
+    animate: (i: number) => ({ 
+      opacity: 1, 
+      y: 0, 
+      transition: { 
+        delay: i * 0.1,
+        duration: 0.3 
+      } 
+    }),
+    hover: { 
+      y: -5, 
+      boxShadow: "0px 10px 20px rgba(0,0,0,0.3)",
+      transition: { duration: 0.2 } 
+    }
+  };
+
+  return (
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      aria-labelledby="settings-modal-title"
+      sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+    >
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            variants={modalVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            style={{ 
+              width: 500, 
+              maxWidth: '90%', 
+            }}
+          >
+            <Paper 
+              className="glass"
+              sx={{ 
+                outline: 'none',
+                borderRadius: 'var(--radius-lg)',
+                padding: 0,
+                overflow: 'hidden',
+                background: 'rgba(15, 15, 20, 0.6)',
+                backdropFilter: 'blur(30px)',
+                WebkitBackdropFilter: 'blur(30px)',
+                boxShadow: '0 15px 40px rgba(0, 0, 0, 0.4)',
+                border: '1px solid rgba(255, 255, 255, 0.2)'
+              }}
+            >
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                p: 2.5, 
+                borderBottom: 1, 
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                position: 'relative',
+              }}>
+                <Typography 
+                  id="settings-modal-title" 
+                  variant="h5" 
+                  component="h2"
+                  sx={{
+                    fontWeight: 600,
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  Settings
+                </Typography>
+                <IconButton 
+                  onClick={onClose} 
+                  aria-label="Close Settings"
+                  sx={{
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      color: 'white',
+                      transform: 'rotate(90deg)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                    }
+                  }}
+                >
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+
+              <Box sx={{ width: '100%' }}>
+                <Box sx={{ borderBottom: 1, borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                  <Tabs 
+                    value={tabValue} 
+                    onChange={handleTabChange} 
+                    variant="fullWidth"
+                    sx={{
+                      '& .MuiTab-root': {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        transition: 'all 0.3s ease',
+                        fontWeight: 500,
+                        textTransform: 'none',
+                        fontSize: '0.95rem',
+                        letterSpacing: '0.5px',
+                      },
+                      '& .Mui-selected': {
+                        color: 'white !important',
+                        textShadow: '0 0 10px rgba(255, 255, 255, 0.3)'
+                      },
+                      '& .MuiTabs-indicator': {
+                        backgroundColor: 'var(--primary-color)',
+                        height: 3,
+                        borderRadius: '3px 3px 0 0',
+                        boxShadow: '0 0 8px var(--primary-color)'
+                      }
+                    }}
+                  >
+                    <Tab label="General" id="settings-tab-0" />
+                    <Tab label="Widgets" id="settings-tab-1" />
+                    <Tab label="Wallpaper" id="settings-tab-2" />
+                  </Tabs>
+                </Box>
+
+                <TabPanel value={tabValue} index={0}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Typography variant="subtitle1" gutterBottom sx={{ 
+                      mb: 2,
+                      fontWeight: 600,
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      textAlign: 'left'
+                    }}>
+                      General Settings
+                    </Typography>
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="body2" gutterBottom sx={{ 
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        fontWeight: 500,
+                        mb: 1,
+                        textAlign: 'left'
+                      }}>
+                        Your Name
+                      </Typography>
+                      <TextField
+                        fullWidth
+                        value={userName}
+                        onChange={handleUserNameChange}
+                        onBlur={handleUserNameSave}
+                        size="small"
+                        placeholder="Enter your name"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.07)',
+                            backdropFilter: 'blur(10px)',
+                            WebkitBackdropFilter: 'blur(10px)',
+                            '& fieldset': {
+                              borderColor: 'rgba(255, 255, 255, 0.15)',
+                              transition: 'all 0.3s ease',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: 'rgba(255, 255, 255, 0.3)',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: 'var(--primary-color)',
+                              boxShadow: '0 0 0 2px rgba(138, 180, 248, 0.2)'
+                            },
+                          },
+                          '& .MuiInputBase-input': {
+                            color: 'white',
+                            padding: '10px 14px',
+                          }
+                        }}
+                      />
+                    </Box>
+                  </motion.div>
+                </TabPanel>
+
+                <TabPanel value={tabValue} index={1}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Typography variant="subtitle1" gutterBottom sx={{ 
+                      mb: 2,
+                      fontWeight: 600,
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      textAlign: 'left'
+                    }}>
+                      Show/Hide Widgets
+                    </Typography>
+                    <List dense>
+                      <AnimatePresence>
+                        {availableWidgets.map((widget, index) => (
+                          <motion.div
+                            key={widget.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1, duration: 0.3 }}
+                          >
+                            <ListItem 
+                              sx={{ 
+                                pl: 1, 
+                                pr: 1,
+                                borderRadius: 'var(--radius-sm)',
+                                mb: 0.5,
+                                transition: 'all 0.2s ease',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.07)'
+                                }
+                              }}
+                            >
+                              <ListItemText 
+                                id={`switch-list-label-${widget.id}`} 
+                                primary={widget.name}
+                                primaryTypographyProps={{
+                                  sx: {
+                                    fontWeight: 500,
+                                    color: 'rgba(255, 255, 255, 0.9)'
+                                  }
+                                }}
+                              />
+                              <Switch
+                                edge="end"
+                                onChange={() => onVisibilityChange(widget.id)}
+                                checked={!!widgetVisibility[widget.id]}
+                                inputProps={{
+                                  'aria-labelledby': `switch-list-label-${widget.id}`,
+                                }}
+                                sx={{
+                                  '& .MuiSwitch-switchBase': {
+                                    color: 'rgba(255, 255, 255, 0.5)',
+                                    '&.Mui-checked': {
+                                      color: 'var(--primary-color)',
+                                    },
+                                    '&.Mui-checked + .MuiSwitch-track': {
+                                      backgroundColor: 'var(--primary-color)',
+                                      opacity: 0.5
+                                    },
+                                  },
+                                  '& .MuiSwitch-thumb': {
+                                    boxShadow: '0 2px 4px 0 rgba(0,0,0,0.2)'
+                                  },
+                                  '& .MuiSwitch-track': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                    opacity: 1
+                                  }
+                                }}
+                              />
+                            </ListItem>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </List>
+                  </motion.div>
+                </TabPanel>
+
+                <TabPanel value={tabValue} index={2}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Typography variant="subtitle1" gutterBottom sx={{ 
+                      mb: 2,
+                      fontWeight: 600,
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      textAlign: 'left'
+                    }}>
+                      Select Wallpaper
+                    </Typography>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 2 }}>
+                      {WALLPAPERS.map((wallpaper, i) => (
+                        <Box 
+                          key={wallpaper.id} 
+                          sx={{ 
+                            gridColumn: { xs: 'span 6', sm: 'span 4', md: 'span 4' } 
+                          }}
+                        >
+                          <motion.div
+                            custom={i}
+                            variants={wallpaperItemVariants}
+                            initial="initial"
+                            animate="animate"
+                            whileHover="hover"
+                          >
+                            <Box
+                              onClick={() => onWallpaperChange(wallpaper.path)}
+                              sx={{
+                                height: 100,
+                                width: 100,
+                                backgroundImage: `url(${wallpaper.path})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                border: currentWallpaper === wallpaper.path 
+                                  ? '2px solid var(--primary-color)' 
+                                  : '2px solid transparent',
+                                transition: 'all 0.3s ease',
+                                boxShadow: currentWallpaper === wallpaper.path 
+                                  ? '0 0 15px rgba(138, 180, 248, 0.5)' 
+                                  : '0 5px 15px rgba(0, 0, 0, 0.2)',
+                                '&:hover': {
+                                  opacity: 0.9,
+                                  transform: 'scale(1.03)',
+                                }
+                              }}
+                            />
+                            <Typography 
+                              variant="caption" 
+                              display="block" 
+                              align="center" 
+                              sx={{ 
+                                mt: 1,
+                                fontWeight: currentWallpaper === wallpaper.path ? 600 : 400,
+                                color: currentWallpaper === wallpaper.path ? 'var(--primary-color)' : 'inherit',
+                                transition: 'all 0.3s ease',
+                                textShadow: currentWallpaper === wallpaper.path ? '0 0 5px rgba(138, 180, 248, 0.5)' : 'none'
+                              }}
+                            >
+                              {wallpaper.name}
+                            </Typography>
+                          </motion.div>
+                        </Box>
+                      ))}
+                    </Box>
+                  </motion.div>
+                </TabPanel>
+              </Box>
+            </Paper>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Modal>
+  );
+};
+
+export default SettingsModal; 

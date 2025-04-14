@@ -1,35 +1,35 @@
 .widget {
-  background-color: var(--bg-light);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  padding: 18px 20px;
+  color: var(--text-light);
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.widget:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-lg);
-}
-
 .widget-header {
-  padding: 15px;
-  background-color: rgba(0, 0, 0, 0.03);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 2px;
 }
 
 .widget-title {
-  font-size: 1.2rem;
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
   font-weight: 600;
-  color: var(--text-dark);
   margin: 0;
+  letter-spacing: 0;
+  text-align: left;
 }
 
 .widget-content {
-  padding: 15px;
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
+  flex: 1;
+  overflow: auto;
 } 

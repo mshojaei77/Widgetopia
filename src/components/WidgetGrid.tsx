@@ -1,15 +1,91 @@
-import React, { ReactNode } from 'react';
-import './WidgetGrid.css';
+import React from 'react';
+import { Responsive, WidthProvider, type Layout } from 'react-grid-layout';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
+import { Box } from '@mui/material'; // Import Box for wrapping
+import type { WidgetGridItem, WidgetLayout } from '../types'; // Import shared types
+// Removed: import './WidgetGrid.css';
+
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 interface WidgetGridProps {
-  children: ReactNode;
+  items: WidgetGridItem[]; // Changed from children to items
+  // Add onLayoutChange prop if you want to save layout changes
+  onLayoutChange?: (layout: Layout[]) => void;
 }
 
-const WidgetGrid: React.FC<WidgetGridProps> = ({ children }) => {
+const WidgetGrid: React.FC<WidgetGridProps> = ({ items, onLayoutChange }) => {
+
+  // Generate layouts object for react-grid-layout from items
+  const layouts = items.reduce((acc, item) => {
+    // Assuming a single breakpoint 'lg' for simplicity, expand as needed
+    acc.lg = acc.lg || [];
+    acc.lg.push({ ...item.layout, i: item.id }); // Add unique id 'i'
+    return acc;
+  }, {} as { [key: string]: WidgetLayout[] });
+
+  // Prevent dragging from interactive elements within widgets
+  const onDragStart = (
+      layout: Layout[],
+      oldItem: Layout,
+      newItem: Layout,
+      placeholder: Layout,
+      e: MouseEvent,
+      element: HTMLElement
+  ) => {
+    const target = e.target as HTMLElement;
+    // Check if the clicked element or its parent is interactive
+    if (
+      target.tagName === 'BUTTON' ||
+      target.tagName === 'A' ||
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.closest('button, a, input, textarea, [role="button"], [role="checkbox"]')
+    ) {
+      // Prevent dragging if the click originated from an interactive element
+      e.stopPropagation();
+      return false;
+    }
+    // Allow drag otherwise (e.g., clicking on Paper background)
+    return true;
+  };
+
   return (
-    <div className="widget-grid">
-      {children}
-    </div>
+    <ResponsiveGridLayout
+      className="widget-grid" // Keep class for potential basic structure styling
+      layouts={layouts}
+      breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+      // Match cols to the image layout (6 columns total?)
+      // Need to adjust defaultLayout in App.tsx accordingly if changing cols
+      cols={{ lg: 6, md: 4, sm: 3, xs: 2, xxs: 1 }}
+      rowHeight={50} // Adjust row height for finer control based on content
+      containerPadding={[10, 10]} // Padding around the grid
+      margin={[16, 16]} // Margin between items
+      isDraggable
+      isResizable
+      draggableCancel=".no-drag" // Add class="no-drag" to elements that shouldn't trigger drag
+      // onDragStart={onDragStart} // Use draggableCancel instead for better reliability
+      onLayoutChange={(layout, allLayouts) => {
+        if (onLayoutChange) {
+          // Only save the layout for the current breakpoint (e.g., 'lg')
+          // Find the relevant breakpoint key from allLayouts
+          const breakpoint = Object.keys(allLayouts).find(key => allLayouts[key] === layout);
+          if (breakpoint) {
+             // console.log('Layout changed for:', breakpoint, layout);
+             onLayoutChange(layout);
+          }
+        }
+      }}
+      // Use Measures to prevent occasional width calculation issues
+      useCSSTransforms={true}
+    >
+      {/* Map items to divs with unique keys for react-grid-layout */}
+      {items.map(item => (
+        <Box key={item.id} sx={{ height: '100%', overflow: 'hidden' }}>
+          {item.component}
+        </Box>
+      ))}
+    </ResponsiveGridLayout>
   );
 };
 

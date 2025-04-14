@@ -1,20 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 :root {
-  --primary-color: #4a8af4;
-  --secondary-color: #6b5bf2;
-  --accent-color: #ffaa44;
-  --bg-light: #ffffff;
-  --text-dark: #333333;
-  --text-light: #ffffff;
+  /* Glass Theme Enhanced Palette */
+  --primary-color: #8ab4f8; /* Cyan-blue accent color */
+  --secondary-color: #c58af9; /* Violet accent for variety */
+  --tertiary-color: #78dcbf; /* Mint accent for variety */
+  --accent-color: var(--primary-color); /* Default accent */
+  --bg-dark: rgba(20, 20, 30, 0.6); /* Darker background base */
+  --text-light: #f0f0f0; /* Brighter white text */
+  --text-dark: #222; /* For contrast on light elements if any */
   --success-color: #4caf50;
   --error-color: #f44336;
   --warning-color: #ff9800;
   --info-color: #2196f3;
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.12);
-  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.15);
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 15px;
+  
+  /* Enhanced Shadows */
+  --shadow-sm: 0 4px 8px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 10px 20px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.3);
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px; /* Larger radius like image */
+
+  /* Enhanced Glass Effect */
+  --glass-bg: rgba(15, 15, 20, 0.5); /* Darker, moderately transparent glass */
+  --glass-border: rgba(255, 255, 255, 0.2); /* More visible white border */
+  --blur-amount: 30px; /* Increased blur intensity */
+  
+  /* Animations */
+  --transition-fast: 0.2s;
+  --transition-normal: 0.3s;
+  --transition-slow: 0.5s;
+  
+  /* Typography */
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 *, *::before, *::after {
@@ -24,10 +46,136 @@
 }
 
 html, body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: var(--font-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   width: 100%;
   height: 100%;
   overflow-x: hidden;
+  /* background-color: #000; Remove black fallback if wallpaper always loads */
+  color: var(--text-light);
+}
+
+body {
+  /* Default wallpaper set here */
+  background-image: url('/wallpapers/nature.jpg'); 
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  /* Add a subtle overlay to darken the background image slightly */
+  position: relative;
+}
+
+body::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.15);
+    z-index: -1; /* Place behind content */
+}
+
+/* Enhanced Glass morphism base styles */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  transition: all var(--transition-normal) ease;
+}
+
+.glass:hover {
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.35);
+}
+
+/* Animated components */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glow {
+  0% { box-shadow: 0 0 5px rgba(138, 180, 248, 0.5); }
+  50% { box-shadow: 0 0 15px rgba(138, 180, 248, 0.8); }
+  100% { box-shadow: 0 0 5px rgba(138, 180, 248, 0.5); }
+}
+
+/* Custom checkbox styles */
+.custom-checkbox {
+  cursor: pointer;
+  transition: all var(--transition-fast) ease;
+}
+
+.custom-checkbox:hover {
+  transform: scale(1.08);
+}
+
+.custom-checkbox.checked {
+  animation: bounce 0.4s;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* MUI Overrides - Ensure they use new variables and glass */
+.MuiPaper-root {
+  /* Let the 'glass' class handle background/blur/border */
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  color: var(--text-light) !important;
+}
+
+.MuiInputBase-root, .MuiOutlinedInput-root {
+  background-color: rgba(255, 255, 255, 0.05) !important; /* Lighter input background */
+  border-radius: var(--radius-md) !important;
+  color: var(--text-light) !important;
+  border: 1px solid var(--glass-border) !important;
+  transition: all var(--transition-fast) ease !important;
+}
+
+.MuiInputBase-root:focus-within, .MuiOutlinedInput-root:focus-within {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 10px rgba(138, 180, 248, 0.3) !important;
+}
+
+/* Remove default fieldset border if needed */
+.MuiOutlinedInput-notchedOutline {
+  border: none !important;
+}
+
+.MuiIconButton-root {
+  color: var(--text-light) !important;
+  transition: transform var(--transition-fast) ease, 
+    background-color var(--transition-fast) ease !important;
+}
+
+.MuiIconButton-root:hover {
+  transform: scale(1.1) !important;
+}
+
+.MuiTypography-root {
+  color: var(--text-light) !important;
+}
+
+/* Search bar enhancements */
+.search-bar {
+  width: 100%;
+  max-width: 600px;
+  position: relative;
+  margin: 1rem auto;
+}
+
+.search-bar .MuiInputBase-root {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  transition: all var(--transition-normal) ease !important;
+}
+
+.search-bar .MuiInputBase-root:focus-within {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 0 20px rgba(138, 180, 248, 0.4) !important;
 } 
