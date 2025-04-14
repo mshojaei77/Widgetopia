@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Typography, IconButton, Paper, Tooltip, Button } from '@mui/material';
 import { Add as AddIcon, DeleteOutline as DeleteIcon, Edit as EditIcon, Check as CheckIcon } from '@mui/icons-material';
 import type { QuickLink } from '../types';
@@ -9,8 +9,30 @@ interface QuickLinksProps {
   onShowAddForm: () => void;
 }
 
+const STORAGE_KEY = 'widgetopia_quick_links';
+
 const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm }) => {
   const [editMode, setEditMode] = useState(false);
+  
+  // Load links from localStorage on component mount
+  useEffect(() => {
+    const storedLinks = localStorage.getItem(STORAGE_KEY);
+    if (storedLinks) {
+      try {
+        const parsedLinks = JSON.parse(storedLinks);
+        if (Array.isArray(parsedLinks) && parsedLinks.length > 0) {
+          setLinks(parsedLinks);
+        }
+      } catch (error) {
+        console.error('Failed to parse stored quick links:', error);
+      }
+    }
+  }, [setLinks]);
+
+  // Save links to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(links));
+  }, [links]);
   
   const deleteLink = (id: number) => {
     setLinks(prevLinks => prevLinks.filter(link => link.id !== id));

@@ -17,7 +17,8 @@ const Clock: React.FC = () => {
     return date.toLocaleTimeString(undefined, {
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
+      hour12: false
     });
   };
 
@@ -35,26 +36,24 @@ const Clock: React.FC = () => {
       elevation={0} 
       className="glass" 
       sx={{ 
-        p: 3, 
+        p: 2, 
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
+        alignItems: 'flex-start',
+        justifyContent: 'flex-start',
         borderRadius: 'var(--radius-lg)',
         position: 'relative',
         overflow: 'hidden',
       }}
     >
       <Typography 
-        variant="h5" 
+        variant="h6" 
         component="h2" 
-        gutterBottom
         sx={{ 
           fontWeight: 600,
-          mb: 2.5,
+          mb: 1,
           letterSpacing: '0.5px',
-          alignSelf: 'flex-start',
           width: '100%',
         }}
       >
@@ -63,39 +62,24 @@ const Clock: React.FC = () => {
       
       <Box sx={{ 
         display: 'flex', 
-        flexDirection: 'column', 
         alignItems: 'center',
         justifyContent: 'center',
-        mt: 1
+        width: '100%',
+        flex: 1
       }}>
         <motion.div
-          initial={{ y: 20, opacity: 0 }}
+          initial={{ y: 5, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
+          transition={{ delay: 0.1, duration: 0.4 }}
         >
-          <Typography variant="h1" sx={{ 
-            fontSize: '4.5rem', 
-            fontWeight: 500, 
-            mt: 2,
-            mb: 0.5,
-            textShadow: '0 2px 10px rgba(0,0,0,0.4)',
-            letterSpacing: '-2px'
+          <Typography variant="h2" sx={{ 
+            fontSize: { xs: '2.2rem', sm: '2.5rem', md: '3rem' }, 
+            fontWeight: 500,
+            textShadow: '0 1px 6px rgba(0,0,0,0.3)',
+            letterSpacing: '-1px',
+            textAlign: 'center'
           }}>
             {formatTime(time)}
-          </Typography>
-        </motion.div>
-        
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
-        >
-          <Typography variant="body1" sx={{ 
-            opacity: 0.8,
-            fontWeight: 300,
-            fontSize: '1.1rem'
-          }}>
-            {formatDate(time)}
           </Typography>
         </motion.div>
       </Box>

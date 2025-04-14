@@ -12,9 +12,19 @@ interface WidgetGridProps {
   items: WidgetGridItem[]; // Changed from children to items
   // Add onLayoutChange prop if you want to save layout changes
   onLayoutChange?: (layout: Layout[]) => void;
+  isDraggable?: boolean; // Add isDraggable prop
+  isResizable?: boolean; // Add isResizable prop
+  // Add column count prop
+  columnCount?: Record<string, number>;
 }
 
-const WidgetGrid: React.FC<WidgetGridProps> = ({ items, onLayoutChange }) => {
+const WidgetGrid: React.FC<WidgetGridProps> = ({ 
+  items, 
+  onLayoutChange,
+  isDraggable = true, // Default to true
+  isResizable = true, // Default to true
+  columnCount = { lg: 6, md: 4, sm: 3, xs: 2, xxs: 1 } // Default column configuration
+}) => {
 
   // Generate layouts object for react-grid-layout from items
   const layouts = items.reduce((acc, item) => {
@@ -55,14 +65,13 @@ const WidgetGrid: React.FC<WidgetGridProps> = ({ items, onLayoutChange }) => {
       className="widget-grid" // Keep class for potential basic structure styling
       layouts={layouts}
       breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-      // Match cols to the image layout (6 columns total?)
-      // Need to adjust defaultLayout in App.tsx accordingly if changing cols
-      cols={{ lg: 6, md: 4, sm: 3, xs: 2, xxs: 1 }}
+      // Use the columnCount prop instead of hardcoded values
+      cols={columnCount}
       rowHeight={50} // Adjust row height for finer control based on content
       containerPadding={[10, 10]} // Padding around the grid
       margin={[16, 16]} // Margin between items
-      isDraggable
-      isResizable
+      isDraggable={isDraggable}
+      isResizable={isResizable}
       draggableCancel=".no-drag" // Add class="no-drag" to elements that shouldn't trigger drag
       // onDragStart={onDragStart} // Use draggableCancel instead for better reliability
       onLayoutChange={(layout, allLayouts) => {
