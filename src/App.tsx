@@ -19,13 +19,112 @@ import Clock from './widgets/Clock';
 import Weather from './widgets/Weather'; // Assuming Weather exists
 import TodoList from './widgets/TodoList'; // Assuming TodoList exists
 import QuickLinks from './widgets/QuickLinks';
+import Calendar from './widgets/Calendar'; // Import the new Calendar widget
 import AddQuickLinkForm from './components/AddQuickLinkForm'; 
 import SettingsModal from './components/SettingsModal';
 import Greeting from './components/Greeting'; // Import Greeting
 import SearchBar from './components/SearchBar'; // Import SearchBar
 import WidgetGrid from './components/WidgetGrid'; // Import WidgetGrid component
+import Music from './widgets/Music'; // Import the Music widget
 
 // import './App.css'; // Removed as file doesn't exist
+
+// Define WidgetWrapper outside the App component for stability
+interface WidgetWrapperProps {
+  widget: { id: string; name: string; component: React.ComponentType<any> };
+  widgetProps: any;
+  editMode: boolean;
+  layout: WidgetLayout | undefined;
+}
+
+const WidgetWrapper = React.memo<WidgetWrapperProps>(({ widget, widgetProps, editMode, layout }) => {
+  return (
+    <Box sx={{ 
+      height: '100%', 
+      position: 'relative',
+      border: editMode ? '2px dashed rgba(255, 255, 255, 0.3)' : 'none',
+      borderRadius: '8px',
+      overflow: 'hidden'
+    }}>
+      {editMode && (
+        <>
+          {/* Top drag handle */}
+          <Box sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: 'rgba(15, 15, 20, 0.7)',
+            color: 'white',
+            padding: '4px 8px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '0.8rem',
+            zIndex: 10,
+            backdropFilter: 'blur(4px)',
+            cursor: 'move'
+          }}>
+            <DragIndicatorIcon fontSize="small" />
+            <Typography variant="caption">{widget.name}</Typography>
+          </Box>
+          
+          {/* Bottom-right resize handle */}
+          <Box sx={{
+            position: 'absolute',
+            bottom: 4,
+            right: 4,
+            backgroundColor: 'rgba(76, 175, 80, 0.7)',
+            color: 'white',
+            borderRadius: '50%',
+            width: 24,
+            height: 24,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 10,
+            cursor: 'nwse-resize',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            opacity: 0.8,
+            '&:hover': {
+              opacity: 1,
+              transform: 'scale(1.1)'
+            },
+            transition: 'all 0.2s ease'
+          }}>
+            <OpenWithIcon style={{ fontSize: 14 }} />
+          </Box>
+          
+          {/* Size indicator */}
+          <Box sx={{
+            position: 'absolute',
+            bottom: 4,
+            left: 4,
+            backgroundColor: 'rgba(15, 15, 20, 0.7)',
+            color: 'white',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            fontSize: '0.7rem',
+            zIndex: 10,
+            backdropFilter: 'blur(4px)',
+            opacity: 0.7
+          }}>
+            {`${layout?.w || 2} × ${layout?.h || 2}`}
+          </Box>
+        </>
+      )}
+      <Box sx={{ 
+        height: editMode ? 'calc(100% - 32px)' : '100%', 
+        overflow: 'auto',
+        pt: editMode ? 4 : 0
+      }}>
+        {/* Use JSX syntax directly */}
+        <widget.component {...widgetProps} />
+      </Box>
+    </Box>
+  );
+});
 
 const App = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -41,13 +140,13 @@ const App = () => {
     if (storedColumns) {
       return JSON.parse(storedColumns);
     }
-    // Default column configuration
+    // Default column configuration - updated to match WidgetGrid
     return {
-      lg: 6, 
-      md: 4, 
-      sm: 3, 
-      xs: 2, 
-      xxs: 1
+      lg: 12, 
+      md: 10, 
+      sm: 6, 
+      xs: 4, 
+      xxs: 2
     };
   });
   
@@ -69,6 +168,8 @@ const App = () => {
     { id: 'weather', name: 'Weather', component: Weather },
     { id: 'todo', name: 'Todo List', component: TodoList },
     { id: 'quicklinks', name: 'Quick Links', component: QuickLinks },
+    { id: 'calendar', name: 'Calendar', component: Calendar }, // Add Calendar widget
+    { id: 'music', name: 'Music Player', component: Music }, // Add Music widget
   ];
 
   // Widget Visibility State
@@ -82,7 +183,9 @@ const App = () => {
       clock: true, 
       weather: true,
       todo: true,
-      quicklinks: true, 
+      quicklinks: true,
+      calendar: true, // Make Calendar visible by default
+      music: true, // Make Music visible by default
     };
   });
 
@@ -98,12 +201,14 @@ const App = () => {
     if (storedLayouts) {
       return JSON.parse(storedLayouts);
     }
-    // Default layouts
+    // Default layouts - updated to match the image
     return {
-      clock: { i: 'clock', x: 0, y: 0, w: 2, h: 2 },
-      weather: { i: 'weather', x: 2, y: 0, w: 2, h: 2 },
-      todo: { i: 'todo', x: 0, y: 2, w: 2, h: 3 },
-      quicklinks: { i: 'quicklinks', x: 2, y: 2, w: 2, h: 2 },
+      weather: { i: 'weather', x: 0, y: 0, w: 3, h: 4 },
+      calendar: { i: 'calendar', x: 3, y: 0, w: 6, h: 6 },
+      todo: { i: 'todo', x: 9, y: 0, w: 3, h: 6 },
+      clock: { i: 'clock', x: 0, y: 4, w: 3, h: 2 },       // Positioned below weather
+      quicklinks: { i: 'quicklinks', x: 0, y: 6, w: 3, h: 2 }, // Positioned below clock
+      music: { i: 'music', x: 3, y: 6, w: 6, h: 2 }, // Positioned next to calendar, below quicklinks
     };
   });
 
@@ -329,8 +434,8 @@ const App = () => {
   const handleIncreaseColumns = () => {
     setColumnCount(prev => ({
       ...prev,
-      lg: Math.min(prev.lg + 1, 12), // Max 12 columns
-      md: Math.min(prev.md + 1, 10), // Max 10 columns for medium screens
+      lg: Math.min(prev.lg + 1, 16), // Max 16 columns
+      md: Math.min(prev.md + 1, 12), // Max 12 columns for medium screens
     }));
     
     setSnackbarMessage('Increased column count');
@@ -415,20 +520,28 @@ const App = () => {
 
   // Prepare WidgetGrid items
   const gridItems = availableWidgets
-    .filter(widget => widgetVisibility[widget.id] && widget.id !== 'quicklinks')
+    .filter(widget => widgetVisibility[widget.id])
     .map(widget => {
-      // Pass necessary props to each widget component
+      // Pass necessary props to each widget component based on its type
       let widgetProps: any = {};
       if (widget.id === 'todo') {
         widgetProps = { todos, setTodos };
-      }
-      // Pass location to Weather widget
-      if (widget.id === 'weather') {
+      } else if (widget.id === 'weather') {
         widgetProps = { location };
+      } else if (widget.id === 'calendar') {
+        // Calendar doesn't need any special props for now
+        widgetProps = {};
+      } else if (widget.id === 'quicklinks') {
+        widgetProps = { links: quickLinks, setLinks: setQuickLinks, onShowAddForm: handleShowAddLinkForm };
+      } else if (widget.id === 'music') {
+        // Add Music widget props if needed in the future
+        // widgetProps = { /* Add music props here */ };
       }
       // Add props for other widgets if needed
       
       // Create a wrapper component that adds edit mode indicators
+      // REMOVED INLINE DEFINITION
+      /*
       const WrappedComponent = () => (
         <Box sx={{ 
           height: '100%', 
@@ -439,7 +552,7 @@ const App = () => {
         }}>
           {editMode && (
             <>
-              {/* Top drag handle */}
+              
               <Box sx={{
                 position: 'absolute',
                 top: 0,
@@ -460,7 +573,7 @@ const App = () => {
                 <Typography variant="caption">{widget.name}</Typography>
               </Box>
               
-              {/* Bottom-right resize handle */}
+              
               <Box sx={{
                 position: 'absolute',
                 bottom: 4,
@@ -487,7 +600,7 @@ const App = () => {
                 <OpenWithIcon style={{ fontSize: 14 }} />
               </Box>
               
-              {/* Size indicator */}
+              
               <Box sx={{
                 position: 'absolute',
                 bottom: 4,
@@ -510,14 +623,23 @@ const App = () => {
             overflow: 'auto',
             pt: editMode ? 4 : 0
           }}>
-            {React.createElement(widget.component, widgetProps)}
+            
+            {React.createElement(widget.component as any, widgetProps)}
           </Box>
         </Box>
       );
+      */
       
       return {
         id: widget.id,
-        component: <WrappedComponent />,
+        component: (
+          <WidgetWrapper 
+            widget={widget}
+            widgetProps={widgetProps}
+            editMode={editMode}
+            layout={widgetLayouts[widget.id]}
+          />
+        ),
         layout: widgetLayouts[widget.id] || { w: 2, h: 2, x: 0, y: 0 }
       };
     });
@@ -563,18 +685,6 @@ const App = () => {
       <Greeting userName={userName} />
       <SearchBar />
       
-      {/* Render QuickLinks separately above the grid if visible */}
-      {widgetVisibility.quicklinks && (
-          <Box sx={{ 
-            width: '100%', 
-            maxWidth: '900px',
-            mb: 3,
-            mt: 1
-          }}>
-              <QuickLinks links={quickLinks} setLinks={setQuickLinks} onShowAddForm={handleShowAddLinkForm} />
-          </Box>
-      )}
-
       {/* Edit mode indicator */}
       {editMode && (
         <>
@@ -674,7 +784,7 @@ const App = () => {
                 </Button>
                 <Button
                   onClick={handleIncreaseColumns}
-                  disabled={columnCount.lg >= 12}
+                  disabled={columnCount.lg >= 16}
                   sx={{ 
                     color: 'white',
                     borderColor: 'rgba(255,255,255,0.3)', 
@@ -741,7 +851,7 @@ const App = () => {
       )}
 
       {/* Widget Grid - Using WidgetGrid component */}
-      <Box sx={{ width: '100%', maxWidth: '1200px' }}>
+      <Box sx={{ width: '100%' }}>
         <WidgetGrid 
           items={gridItems}
           onLayoutChange={handleLayoutChange}

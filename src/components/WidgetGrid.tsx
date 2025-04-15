@@ -23,7 +23,8 @@ const WidgetGrid: React.FC<WidgetGridProps> = ({
   onLayoutChange,
   isDraggable = true, // Default to true
   isResizable = true, // Default to true
-  columnCount = { lg: 6, md: 4, sm: 3, xs: 2, xxs: 1 } // Default column configuration
+  // Adjust column configuration for a denser grid - REVERTED for wider columns
+  columnCount = { lg: 8, md: 6, sm: 4, xs: 2, xxs: 1 } // Fewer columns for wider look
 }) => {
 
   // Generate layouts object for react-grid-layout from items
@@ -67,9 +68,9 @@ const WidgetGrid: React.FC<WidgetGridProps> = ({
       breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
       // Use the columnCount prop instead of hardcoded values
       cols={columnCount}
-      rowHeight={50} // Adjust row height for finer control based on content
-      containerPadding={[10, 10]} // Padding around the grid
-      margin={[16, 16]} // Margin between items
+      rowHeight={30} // Reduced row height for potentially finer control
+      containerPadding={[5, 5]} // Padding around the grid reduced
+      margin={[8, 8]} // Reduced margin between items
       isDraggable={isDraggable}
       isResizable={isResizable}
       draggableCancel=".no-drag" // Add class="no-drag" to elements that shouldn't trigger drag

@@ -267,131 +267,127 @@ const Weather: React.FC<WeatherWidgetProps> = ({ location }) => {
       elevation={0} 
       className="glass" 
       sx={{ 
-        p: 2, // Further reduced padding
+        p: 1.5, // Reduced padding
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 'var(--radius-lg)',
+        borderRadius: 'var(--radius-lg)', // Adjusted radius if needed for compactness, using existing var
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      <Typography 
-        variant="h5" 
-        component="h2" 
-        gutterBottom
-        sx={{ 
-          fontWeight: 600,
-          mb: 1, // Further reduced margin bottom
-          letterSpacing: '0.5px',
-          alignSelf: 'flex-start',
-          width: '100%',
-          minHeight: '32px', // Ensure space for title even when loading
-        }}
-      >
-        Weather
-      </Typography>
+      {/* REMOVED Title Typography component */}
       
       {loading ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexGrow: 1 }}>
-          <CircularProgress sx={{ color: 'white' }} />
-          <Typography sx={{ mt: 2, color: 'rgba(255,255,255,0.7)' }}>Fetching weather...</Typography>
+          <CircularProgress size={30} sx={{ color: 'white' }} /> {/* Smaller loader */}
+          <Typography variant="caption" sx={{ mt: 1, color: 'rgba(255,255,255,0.7)' }}>Fetching...</Typography> {/* Smaller text */}
         </Box>
       ) : error ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexGrow: 1, textAlign: 'center', px: 2 }}>
-          <Typography color="error" sx={{ mb: 1 }}>{error}</Typography>
-          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>Please check the location or try again later.</Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexGrow: 1, textAlign: 'center', px: 1 }}>
+          <Typography color="error" variant="caption" sx={{ mb: 0.5 }}>{error}</Typography> {/* Smaller text */}
+          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>Check location</Typography> {/* Shorter text */}
         </Box>
       ) : (
         <Box sx={{ 
           display: 'flex', 
           flexDirection: 'column', 
           alignItems: 'center',
-          justifyContent: 'space-between',
-          mt: 1,
+          justifyContent: 'flex-start', // Changed to flex-start to reduce middle space
+          mt: 0, // Removed top margin
           flexGrow: 1,
+          width: '100%', // Ensure full width usage
         }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+          {/* Main Weather Info */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', mb: 0 }}> {/* Removed margin bottom */}
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5 }}
             >
-              {getWeatherIcon(weather.weatherCode)}
+              {/* Adjust icon size directly in getWeatherIcon/weatherConditions if needed, or keep dynamic */}
+              {getWeatherIcon(weather.weatherCode)} 
             </motion.div>
             
             <motion.div
-              initial={{ y: 20, opacity: 0 }}
+              initial={{ y: 15, opacity: 0 }} // Reduced animation distance
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
+              transition={{ delay: 0.1, duration: 0.4 }} // Faster animation
             >
-              <Typography variant="h1" sx={{ 
-                fontSize: '3.6rem', // Further reduced font size
-                fontWeight: 500, 
-                mt: 0.5, // Further reduced margin top
-                mb: 0, // Reduced margin bottom
-                textShadow: '0 2px 10px rgba(0,0,0,0.4)',
-                letterSpacing: '-2px'
+              <Typography variant="h2" sx={{ // Use h2 but adjust style
+                fontSize: '2.8rem', // Significantly reduced font size
+                fontWeight: 500,
+                mt: 0.5, // Increased margin top slightly
+                mb: 0.2, // Added small margin bottom
+                textShadow: '0 1px 5px rgba(0,0,0,0.3)', // Adjusted shadow
+                letterSpacing: '-1.5px' // Adjusted spacing
               }}>
                 {weather.temperature !== null ? `${weather.temperature}°C` : '--'}
               </Typography>
             </motion.div>
             
             <motion.div
-              initial={{ y: 20, opacity: 0 }}
+              initial={{ y: 15, opacity: 0 }} // Reduced animation distance
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
+              transition={{ delay: 0.2, duration: 0.4 }} // Faster animation
             >
-              <Typography variant="h6" sx={{ 
-                minHeight: '28px', // Keep space
-                opacity: 0.95, 
-                mb: 0.5, // Reduced margin bottom
+              <Typography variant="body1" sx={{ // Use body1 but adjust style
+                fontSize: '0.9rem', // Reduced font size
+                minHeight: 'auto', // Remove minHeight
+                opacity: 0.9,
+                mb: 0.5, // Increased margin bottom
                 fontWeight: 400,
-                letterSpacing: '1px'
+                letterSpacing: '0.5px' // Adjusted spacing
               }}>
                 {weather.condition}
               </Typography>
             </motion.div>
             
             <motion.div
-              initial={{ y: 20, opacity: 0 }}
+              initial={{ y: 15, opacity: 0 }} // Reduced animation distance
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.4, duration: 0.5 }}
+              transition={{ delay: 0.3, duration: 0.4 }} // Faster animation
             >
-              <Typography variant="body1" sx={{ 
-                minHeight: '24px', // Keep space
-                opacity: 0.8,
-                fontWeight: 300
+              <Typography variant="body2" sx={{ // Use body2
+                fontSize: '0.75rem', // Reduced font size
+                minHeight: 'auto', // Remove minHeight
+                opacity: 0.75,
+                fontWeight: 300,
+                textAlign: 'center', // Center location name if long
+                lineHeight: 1.2, // Adjust line height
               }}>
                 {weather.locationName}
               </Typography>
             </motion.div>
           </Box>
 
+          {/* Details Row */}
           <Box 
             sx={{ 
               display: 'flex', 
-              justifyContent: 'space-around', 
+              justifyContent: 'center', // Center items if space allows
+              alignItems: 'center',
               width: '100%', 
-              my: 1.5, // Further reduced vertical margin
-              px: 1, 
-              opacity: 0.85,
-              gap: 2, // Gap between items
+              my: 0.5, // Increased vertical margin
+              px: 0.5, 
+              opacity: 0.8,
+              gap: 1.5, // Reduced gap
+              flexWrap: 'wrap', // Allow wrapping if needed
             }}
           >
             {/* Wind Speed */}          
             {weather.windSpeed !== null && (
               <motion.div
-                initial={{ y: 20, opacity: 0 }}
+                initial={{ y: 10, opacity: 0 }} // Reduced animation distance
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.5, duration: 0.4 }} // Slightly faster anim
+                transition={{ delay: 0.4, duration: 0.3 }} // Faster animation
               >
-                <Tooltip title="Wind Speed">
-                  <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.8 }}>
-                    <AirIcon sx={{ fontSize: 16, mr: 0.4 }}/> {/* Smaller icon/margin */}
-                    <Typography variant="caption" sx={{ fontWeight: 300 }}> {/* Smaller font */}
+                <Tooltip title="Wind Speed" placement="top">
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <AirIcon sx={{ fontSize: 14, mr: 0.3 }}/> {/* Smaller icon/margin */}
+                    <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 300 }}> {/* Smaller font */}
                       {`${weather.windSpeed} km/h`}
                     </Typography>
                   </Box>
@@ -401,14 +397,14 @@ const Weather: React.FC<WeatherWidgetProps> = ({ location }) => {
             {/* Humidity */}          
             {weather.humidity !== null && (
               <motion.div
-                initial={{ y: 20, opacity: 0 }}
+                initial={{ y: 10, opacity: 0 }} // Reduced animation distance
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.6, duration: 0.4 }} // Slightly faster anim
+                transition={{ delay: 0.5, duration: 0.3 }} // Faster animation
               >
-                <Tooltip title="Humidity">
-                  <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.8 }}>
-                    <OpacityIcon sx={{ fontSize: 16, mr: 0.4 }}/> {/* Smaller icon/margin */}
-                    <Typography variant="caption" sx={{ fontWeight: 300 }}> {/* Smaller font */}
+                <Tooltip title="Humidity" placement="top">
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <OpacityIcon sx={{ fontSize: 14, mr: 0.3 }}/> {/* Smaller icon/margin */}
+                    <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 300 }}> {/* Smaller font */}
                       {`${weather.humidity}%`}
                     </Typography>
                   </Box>
@@ -418,14 +414,14 @@ const Weather: React.FC<WeatherWidgetProps> = ({ location }) => {
             {/* Pressure */}          
             {weather.pressure !== null && (
               <motion.div
-                initial={{ y: 20, opacity: 0 }}
+                initial={{ y: 10, opacity: 0 }} // Reduced animation distance
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.7, duration: 0.4 }} // Slightly faster anim
+                transition={{ delay: 0.6, duration: 0.3 }} // Faster animation
               >
-                <Tooltip title="Pressure">
-                  <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.8 }}>
-                    <CompressIcon sx={{ fontSize: 16, mr: 0.4 }}/> {/* Smaller icon/margin */}
-                    <Typography variant="caption" sx={{ fontWeight: 300 }}> {/* Smaller font */}
+                <Tooltip title="Pressure" placement="top">
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <CompressIcon sx={{ fontSize: 14, mr: 0.3 }}/> {/* Smaller icon/margin */}
+                    <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 300 }}> {/* Smaller font */}
                       {`${weather.pressure} mmHg`}
                     </Typography>
                   </Box>
@@ -436,35 +432,32 @@ const Weather: React.FC<WeatherWidgetProps> = ({ location }) => {
 
           {/* Bottom Section: Daily Forecast */}
           {dailyForecast.length > 0 && (
-            <Box sx={{ width: '100%', mt: 'auto' }}> {/* Pushes to bottom */}
-              <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)', mb: 1, mt: 1 }} />
+            <Box sx={{ width: '100%', mt: 1, pt: 0.5 }}> {/* Increased top margin */}
+              <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)', my: 0.5 }} /> {/* Increased margin */}
               <Box
                 sx={{
                   display: 'flex',
                   justifyContent: 'space-around', // Distribute days evenly
-                  pb: 0.5, // Small padding bottom
+                  alignItems: 'flex-start', // Align items to top
+                  pb: 0, // Removed padding bottom
                 }}
               >
                 {dailyForecast.map((day, index) => (
                   <motion.div
                     key={index}
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 5 }} // Reduced animation distance
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.9 + index * 0.1, duration: 0.4 }} // Delay after details
+                    transition={{ delay: 0.7 + index * 0.05, duration: 0.3 }} // Faster animation
                   >
                     <Box sx={{
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      px: 1,
+                      px: 0.5, // Reduced padding
                       textAlign: 'center'
                     }}>
-                      <Typography variant="caption" sx={{ opacity: 0.8, mb: 0.5, fontWeight: 500 }}>{day.dayOfWeek}</Typography>
-                      <Box sx={{ height: 30, mb: 0.5 }}>{getSmallIcon(day.weatherCode)}</Box> {/* Use renamed function */}
-                      <Typography variant="caption" sx={{ fontWeight: 500, display: 'flex', gap: '2px' }}>
-                        <span>{day.tempMax}°</span>
-                        <span style={{opacity: 0.6}}>{day.tempMin}°</span>
-                      </Typography>
+                      <Typography variant="caption" sx={{ fontSize: '0.65rem', opacity: 0.8, mb: 0.4, fontWeight: 500 }}>{day.dayOfWeek}</Typography> {/* Smaller font, increased margin */}
+                      <Box sx={{ height: 24, mb: 0.3 }}>{getSmallIcon(day.weatherCode)}</Box> {/* Use renamed function, adjusted height, increased margin */}
                     </Box>
                   </motion.div>
                 ))}

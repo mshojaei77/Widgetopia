@@ -47,19 +47,6 @@ const Clock: React.FC = () => {
         overflow: 'hidden',
       }}
     >
-      <Typography 
-        variant="h6" 
-        component="h2" 
-        sx={{ 
-          fontWeight: 600,
-          mb: 1,
-          letterSpacing: '0.5px',
-          width: '100%',
-        }}
-      >
-        Clock
-      </Typography>
-      
       <Box sx={{ 
         display: 'flex', 
         alignItems: 'center',
@@ -80,6 +67,14 @@ const Clock: React.FC = () => {
             textAlign: 'center'
           }}>
             {formatTime(time)}
+          </Typography>
+          <Typography variant="body2" sx={{ 
+            textAlign: 'center', 
+            mt: 1, 
+            opacity: 0.8,
+            textShadow: '0 1px 3px rgba(0,0,0,0.2)',
+          }}>
+            {formatDate(time)}
           </Typography>
         </motion.div>
       </Box>
