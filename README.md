@@ -2,17 +2,6 @@
 
 Make your browser's new tab page useful and beautiful with customizable widgets!
 
-
-
-## What is Widgetopia?
-
-Widgetopia replaces Chrome's default new tab page with a personalized dashboard that includes:
-
-- ⏰ **Clock Widget** - Never lose track of time
-- 🌤️ **Weather Widget** - See the current weather at a glance
-- ✅ **Todo List** - Keep track of your tasks where you'll actually see them
-- 🔗 **Quick Links** - One-click access to your favorite websites
-
 ## How to Install
 
 Currently, Widgetopia is under development and not yet available in the Chrome Web Store. To try it out:
@@ -42,20 +31,6 @@ Currently, Widgetopia is under development and not yet available in the Chrome W
 
 7. Open a new tab to enjoy your custom dashboard!
 
-## How to Use
-
-### Todo Widget
-- Type your task and press Enter to add it
-- Click a task to mark it as complete
-- Click the ❌ to remove a task
-
-### Quick Links
-- Click the + button to add a new link
-- Enter the website URL and a name
-- Click on any link to visit that website
-
-### Weather Widget
-- Currently shows sample data (real weather integration coming soon!)
 
 ## Frequently Asked Questions
 
