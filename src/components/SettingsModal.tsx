@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Modal, Box, Paper, Typography, List, ListItem, ListItemText, Switch, IconButton, Divider,
-  Tab, Tabs, TextField
+  Tab, Tabs, TextField, Button
 } from '@mui/material';
 import { Grid } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
@@ -15,6 +15,10 @@ interface SettingsModalProps {
   availableWidgets: { id: string; name: string }[];
   currentWallpaper: string;
   onWallpaperChange: (wallpaper: string) => void;
+  currentLocation: string;
+  onLocationChange: (location: string) => void;
+  userName: string;
+  onUserNameChange: (name: string) => void;
 }
 
 interface TabPanelProps {
@@ -60,22 +64,41 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   availableWidgets,
   currentWallpaper,
   onWallpaperChange,
+  currentLocation,
+  onLocationChange,
+  userName: initialUserName,
+  onUserNameChange,
 }) => {
   const [tabValue, setTabValue] = useState(0);
-  const [userName, setUserName] = useState(() => {
-    return localStorage.getItem('userName') || 'Alex';
-  });
+  const [userName, setUserName] = useState(initialUserName);
+  const [locationInput, setLocationInput] = useState(currentLocation);
+
+  useEffect(() => {
+    setUserName(initialUserName);
+  }, [initialUserName]);
+
+  useEffect(() => {
+    setLocationInput(currentLocation);
+  }, [currentLocation]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
   
-  const handleUserNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUserNameInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setUserName(event.target.value);
   };
   
   const handleUserNameSave = () => {
-    localStorage.setItem('userName', userName);
+    onUserNameChange(userName);
+  };
+
+  const handleLocationInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setLocationInput(event.target.value);
+  };
+
+  const handleLocationSave = () => {
+    onLocationChange(locationInput);
   };
 
   // Animation variants
@@ -244,7 +267,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <TextField
                         fullWidth
                         value={userName}
-                        onChange={handleUserNameChange}
+                        onChange={handleUserNameInputChange}
                         onBlur={handleUserNameSave}
                         size="small"
                         placeholder="Enter your name"
@@ -271,6 +294,65 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                           }
                         }}
                       />
+                    </Box>
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="body2" gutterBottom sx={{ 
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        fontWeight: 500,
+                        mb: 1,
+                        textAlign: 'left'
+                      }}>
+                        Weather Location
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <TextField
+                          fullWidth
+                          value={locationInput}
+                          onChange={handleLocationInputChange}
+                          size="small"
+                          placeholder="Enter City Name (e.g., London)"
+                          sx={{
+                            flexGrow: 1,
+                            '& .MuiOutlinedInput-root': {
+                              backgroundColor: 'rgba(30, 30, 40, 0.7)',
+                              backdropFilter: 'blur(5px)',
+                              WebkitBackdropFilter: 'blur(5px)',
+                              '& fieldset': {
+                                borderColor: 'rgba(255, 255, 255, 0.1)',
+                                transition: 'all 0.3s ease',
+                              },
+                              '&:hover fieldset': {
+                                borderColor: 'rgba(255, 255, 255, 0.3)',
+                              },
+                              '&.Mui-focused fieldset': {
+                                borderColor: 'var(--primary-color)',
+                                boxShadow: '0 0 0 2px rgba(138, 180, 248, 0.2)'
+                              },
+                            },
+                            '& .MuiInputBase-input': {
+                              color: 'white',
+                              padding: '10px 14px',
+                            }
+                          }}
+                        />
+                        <Button 
+                          variant="contained" 
+                          size="small" 
+                          onClick={handleLocationSave}
+                          sx={{ 
+                              height: '39.5px',
+                              backgroundColor: 'var(--primary-color)',
+                              '&:hover': {
+                                backgroundColor: 'var(--primary-color-dark)'
+                              }
+                          }}
+                        >
+                          Set
+                        </Button>
+                      </Box>
+                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', mt: 1, display: 'block' }}>
+                        Enter a city name for weather updates.
+                      </Typography>
                     </Box>
                   </motion.div>
                 </TabPanel>

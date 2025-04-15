@@ -27,7 +27,7 @@ import WidgetGrid from './components/WidgetGrid'; // Import WidgetGrid component
 
 // import './App.css'; // Removed as file doesn't exist
 
-const App: React.FC = () => {
+const App = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showAddLinkForm, setShowAddLinkForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -57,6 +57,10 @@ const App: React.FC = () => {
   });
   const [userName, setUserName] = useState<string>(() => {
       return localStorage.getItem('userName') || 'Alex';
+  });
+  // Add location state
+  const [location, setLocation] = useState<string>(() => {
+    return localStorage.getItem('weatherLocation') || 'Tehran'; // Default to Tehran
   });
 
   // Widget Definitions
@@ -160,6 +164,11 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('userName', userName);
   }, [userName]);
+
+  // Save location to storage
+  useEffect(() => {
+    localStorage.setItem('weatherLocation', location);
+  }, [location]);
 
   // Save todos (example, adapt to your TodoList implementation)
   useEffect(() => {
@@ -267,6 +276,18 @@ const App: React.FC = () => {
     setCurrentWallpaper(wallpaperPath);
   }, []);
 
+  const handleUserNameChange = useCallback((newName: string) => {
+    setUserName(newName);
+  }, []);
+
+  // Add handler for location change
+  const handleLocationChange = useCallback((newLocation: string) => {
+    setLocation(newLocation);
+    // Optionally, show a snackbar confirmation
+    setSnackbarMessage(`Weather location set to ${newLocation}`);
+    setSnackbarOpen(true);
+  }, []);
+
   const handleToggleEditMode = () => {
     if (editMode) {
       // Exiting edit mode, save any changes
@@ -367,7 +388,11 @@ const App: React.FC = () => {
         // Assuming TodoList accepts todos and setTodos
         widgetProps = { todos: todos, setTodos: setTodos }; 
     }
-    // Add props for other widgets like Weather if needed
+    // Pass location to Weather widget
+    if (widgetId === 'weather') {
+      widgetProps = { location };
+    }
+    // Add props for other widgets if needed
 
     return (
       <Box 
@@ -396,6 +421,10 @@ const App: React.FC = () => {
       let widgetProps: any = {};
       if (widget.id === 'todo') {
         widgetProps = { todos, setTodos };
+      }
+      // Pass location to Weather widget
+      if (widget.id === 'weather') {
+        widgetProps = { location };
       }
       // Add props for other widgets if needed
       
@@ -772,6 +801,12 @@ const App: React.FC = () => {
         availableWidgets={availableWidgets.map(w => ({ id: w.id, name: w.name }))}
         currentWallpaper={currentWallpaper}
         onWallpaperChange={handleWallpaperChange}
+        // Pass location props
+        currentLocation={location}
+        onLocationChange={handleLocationChange}
+        // Pass username props
+        userName={userName}
+        onUserNameChange={handleUserNameChange}
       />
 
       <AddQuickLinkForm
