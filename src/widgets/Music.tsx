@@ -55,7 +55,7 @@ interface SCWidget {
   skip: (index: number) => void;
   next: () => void;
   prev: () => void;
-  bind: (event: string, callback: () => void) => void;
+  bind: (event: string, callback: (...args: any[]) => void) => void;
   unbind: (event: string) => void;
   getCurrentSound: (callback: (sound: any) => void) => void;
   getSounds: (callback: (sounds: any[]) => void) => void;
@@ -107,6 +107,112 @@ interface Playlist {
   tracks: string[];
 }
 
+// FallbackPlayer implementation
+class FallbackPlayer implements SCWidget {
+  private isPlaying: boolean = false;
+  private audioElement: HTMLAudioElement | null = null;
+  private volume: number = 80;
+  private callbacks: Record<string, Array<(...args: any[]) => void>> = {
+    [SC_EVENTS.PLAY]: [],
+    [SC_EVENTS.PAUSE]: [],
+    [SC_EVENTS.FINISH]: [],
+    [SC_EVENTS.READY]: []
+  };
+
+  constructor() {
+    this.audioElement = new Audio();
+    this.audioElement.addEventListener('ended', () => {
+      this.isPlaying = false;
+      this.triggerCallbacks(SC_EVENTS.FINISH);
+    });
+    this.audioElement.addEventListener('play', () => {
+      this.isPlaying = true;
+      this.triggerCallbacks(SC_EVENTS.PLAY);
+    });
+    this.audioElement.addEventListener('pause', () => {
+      this.isPlaying = false;
+      this.triggerCallbacks(SC_EVENTS.PAUSE);
+    });
+    
+    // Signal ready immediately
+    setTimeout(() => {
+      this.triggerCallbacks(SC_EVENTS.READY);
+    }, 100);
+  }
+
+  private triggerCallbacks(event: string): void {
+    if (this.callbacks[event]) {
+      this.callbacks[event].forEach(callback => callback());
+    }
+  }
+
+  play(): void {
+    if (this.audioElement) {
+      this.audioElement.play().catch(e => console.error('Fallback play error:', e));
+    }
+  }
+
+  pause(): void {
+    if (this.audioElement) {
+      this.audioElement.pause();
+    }
+  }
+
+  seekTo(milliseconds: number): void {
+    if (this.audioElement) {
+      this.audioElement.currentTime = milliseconds / 1000;
+    }
+  }
+
+  skip(index: number): void {
+    console.log('Fallback skip called with index:', index);
+  }
+
+  next(): void {
+    console.log('Fallback next called');
+  }
+
+  prev(): void {
+    console.log('Fallback prev called');
+  }
+
+  bind(event: string, callback: (...args: any[]) => void): void {
+    if (!this.callbacks[event]) {
+      this.callbacks[event] = [];
+    }
+    this.callbacks[event].push(callback);
+  }
+
+  unbind(event: string): void {
+    this.callbacks[event] = [];
+  }
+
+  getCurrentSound(callback: (sound: any) => void): void {
+    callback({ permalink_url: 'fallback' });
+  }
+
+  getSounds(callback: (sounds: any[]) => void): void {
+    callback([{ permalink_url: 'fallback' }]);
+  }
+
+  getCurrentSoundIndex(callback: (index: number) => void): void {
+    callback(0);
+  }
+
+  setVolume(volume: number): void {
+    this.volume = volume * 100;
+    if (this.audioElement) {
+      this.audioElement.volume = volume;
+    }
+  }
+
+  // Custom method for fallback player
+  setSrc(url: string): void {
+    console.log('Fallback player would set source to:', url);
+    // For a real implementation, you'd need to extract the audio URL
+  }
+}
+
 const Music: React.FC = () => {
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [playlists, setPlaylists] = useState<Playlist[]>(() => {
@@ -122,6 +228,7 @@ const Music: React.FC = () => {
   const [widgetReady, setWidgetReady] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const widgetRef = useRef<SCWidget | null>(null);
+  const fallbackPlayerRef = useRef<FallbackPlayer | null>(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedTrackIndex, setSelectedTrackIndex] = useState<number | null>(null);
   const [openSettingsDialog, setOpenSettingsDialog] = useState(false);
@@ -131,166 +238,280 @@ const Music: React.FC = () => {
   const [showRelated, setShowRelated] = useState<boolean>(false);
   const [visual, setVisual] = useState<boolean>(true);
   const [autoPlay, setAutoPlay] = useState<boolean>(false);
+  const [useFallbackMode, setUseFallbackMode] = useState<boolean>(false);
 
   // Current playlist and tracks
-  const currentPlaylist = playlists[currentPlaylistIndex];
+  const currentPlaylist = playlists[currentPlaylistIndex] || defaultPlaylist;
   const currentTracks = currentPlaylist.tracks;
+  
+  // Make sure soundcloudUrl is available for the UI
+  const soundcloudUrl = currentTracks.length > 0 ? currentTracks[currentTrackIndex] : '';
+
+  // Initialize fallback player
+  useEffect(() => {
+    fallbackPlayerRef.current = new FallbackPlayer();
+    
+    const fallbackPlayer = fallbackPlayerRef.current;
+    
+    fallbackPlayer.bind(SC_EVENTS.READY, () => {
+      if (useFallbackMode) {
+        console.log('Fallback player ready');
+        setWidgetReady(true);
+      }
+    });
+    
+    fallbackPlayer.bind(SC_EVENTS.PLAY, () => {
+      console.log('Fallback player: play event');
+      setIsPlaying(true);
+    });
+    
+    fallbackPlayer.bind(SC_EVENTS.PAUSE, () => {
+      console.log('Fallback player: pause event');
+      setIsPlaying(false);
+    });
+    
+    fallbackPlayer.bind(SC_EVENTS.FINISH, () => {
+      console.log('Fallback player: finish event');
+      handleNextTrack();
+    });
+    
+    return () => {
+      // Clean up fallback player
+      if (fallbackPlayerRef.current) {
+        fallbackPlayerRef.current.unbind(SC_EVENTS.READY);
+        fallbackPlayerRef.current.unbind(SC_EVENTS.PLAY);
+        fallbackPlayerRef.current.unbind(SC_EVENTS.PAUSE);
+        fallbackPlayerRef.current.unbind(SC_EVENTS.FINISH);
+      }
+    };
+  }, []);
 
   // Initialize SoundCloud Widget
   useEffect(() => {
-    // Load SoundCloud Widget API if not already loaded
-    if (!window.SC) {
-      const script = document.createElement('script');
-      script.src = 'https://w.soundcloud.com/player/api.js';
-      script.async = true;
-      document.body.appendChild(script);
+    // Try to load the SoundCloud Widget API
+    const loadSoundCloudAPI = () => {
+      console.log('Loading SoundCloud Widget API...');
       
-      script.onload = initializeWidget;
-      
-      return () => {
-        document.body.removeChild(script);
-      };
-    } else {
-      initializeWidget();
-    }
+      return new Promise<void>((resolve, reject) => {
+        if (window.SC) {
+          console.log('SoundCloud API already loaded');
+          resolve();
+          return;
+        }
+        
+        try {
+          const script = document.createElement('script');
+          script.src = 'https://w.soundcloud.com/player/api.js';
+          script.async = true;
+          
+          script.onload = () => {
+            console.log('SoundCloud Widget API loaded successfully');
+            resolve();
+          };
+          
+          script.onerror = (error) => {
+            console.error('Failed to load SoundCloud Widget API:', error);
+            reject(new Error('Failed to load SoundCloud API'));
+          };
+          
+          document.body.appendChild(script);
+        } catch (error) {
+          console.error('Error setting up SoundCloud API script:', error);
+          reject(error);
+        }
+      });
+    };
+    
+    const setupWidget = async () => {
+      try {
+        // Try to load the SoundCloud API
+        await loadSoundCloudAPI();
+        
+        // Initialize the widget if the API loaded successfully
+        initializeWidget();
+      } catch (error) {
+        console.error('Failed to set up SoundCloud widget, using fallback mode:', error);
+        setUseFallbackMode(true);
+      }
+    };
+    
+    setupWidget();
   }, []);
 
   // Initialize widget when iframe is available
   const initializeWidget = () => {
+    console.log('Initializing SoundCloud widget...');
     if (iframeRef.current && window.SC) {
-      widgetRef.current = window.SC.Widget(iframeRef.current);
-      
-      widgetRef.current.bind(SC_EVENTS.READY, () => {
-        setWidgetReady(true);
-        console.log('SoundCloud widget ready');
+      try {
+        console.log('Creating widget instance');
+        widgetRef.current = window.SC.Widget(iframeRef.current);
         
-        // Set initial volume
-        widgetRef.current?.setVolume(muted ? 0 : volume / 100);
-      });
-      
-      widgetRef.current.bind(SC_EVENTS.PLAY, () => {
-        setIsPlaying(true);
-      });
-      
-      widgetRef.current.bind(SC_EVENTS.PAUSE, () => {
-        setIsPlaying(false);
-      });
-      
-      widgetRef.current.bind(SC_EVENTS.FINISH, () => {
-        handleNextTrack();
-      });
+        widgetRef.current.bind(SC_EVENTS.READY, () => {
+          console.log('SoundCloud widget ready event received');
+          setWidgetReady(true);
+          setUseFallbackMode(false);
+          
+          // Set initial volume
+          try {
+            widgetRef.current?.setVolume(muted ? 0 : volume / 100);
+          } catch (error) {
+            console.error('Error setting volume:', error);
+          }
+          
+          // Check current playing state when widget is ready
+          try {
+            widgetRef.current?.getCurrentSound((sound) => {
+              if (sound) {
+                console.log('Current sound on ready:', sound);
+              }
+            });
+          } catch (error) {
+            console.error('Error getting current sound:', error);
+          }
+        });
+        
+        widgetRef.current.bind(SC_EVENTS.PLAY, () => {
+          console.log('Play event received from SoundCloud widget');
+          setIsPlaying(true);
+        });
+        
+        widgetRef.current.bind(SC_EVENTS.PAUSE, () => {
+          console.log('Pause event received from SoundCloud widget');
+          setIsPlaying(false);
+        });
+        
+        widgetRef.current.bind(SC_EVENTS.FINISH, () => {
+          console.log('Finish event received from SoundCloud widget');
+          handleNextTrack();
+        });
+        
+        // Check initial state periodically
+        setTimeout(() => {
+          // After a short delay, check if the track is actually playing
+          try {
+            if (widgetRef.current && isPlaying) {
+              console.log('Verifying playback state...');
+              widgetRef.current.getCurrentSound((sound) => {
+                console.log('Current sound check:', sound ? 'Sound loaded' : 'No sound');
+              });
+            }
+          } catch (error) {
+            console.error('Error checking sound:', error);
+          }
+        }, 1000);
+      } catch (error) {
+        console.error('Error initializing SoundCloud widget:', error);
+        setWidgetReady(false);
+        setUseFallbackMode(true);
+      }
+    } else {
+      console.warn('Cannot initialize widget: iframe or SC not available');
+      setUseFallbackMode(true);
     }
   };
 
   // Update widget when currentTracks or currentTrackIndex changes
   useEffect(() => {
-    if (widgetReady && widgetRef.current && currentTracks.length > 0) {
-      // Load new track if it's not the same URL
-      const url = currentTracks[currentTrackIndex];
-      
-      // Check if the URL is already loaded before changing
+    if (currentTracks.length === 0) return;
+    
+    const url = currentTracks[currentTrackIndex];
+    console.log(`Updating track: ${url}, Fallback: ${useFallbackMode}, Ready: ${widgetReady}`);
+    
+    if (useFallbackMode) {
+      // Use fallback player
+      if (fallbackPlayerRef.current) {
+        console.log('Using fallback player for track:', url);
+        fallbackPlayerRef.current.setSrc(url);
+      }
+      return;
+    }
+    
+    // Use SoundCloud widget if ready, otherwise update iframe directly
+    if (widgetReady && widgetRef.current) {
       widgetRef.current.getCurrentSound((currentSound) => {
-        // Only reload if there's no current sound or the URL has changed
         if (!currentSound || !currentSound.permalink_url || currentSound.permalink_url !== url) {
-          // Reset the iframe with the new URL
-          const isPlaylist = isPlaylistUrl(url);
-          
-          // Add appropriate parameters based on URL type
-          let embedUrl = `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}`;
-          embedUrl += `&auto_play=${autoPlay}`;
-          embedUrl += `&hide_related=${!showRelated}`;
-          embedUrl += `&show_comments=${showComments}`;
-          embedUrl += '&show_user=true';
-          embedUrl += '&show_reposts=false';
-          embedUrl += '&show_teaser=true';
-          embedUrl += `&visual=${visual}`;
-          
-          // For playlists, we don't want to restrict to a single active sound
-          if (isPlaylist) {
-            embedUrl += '&single_active=false';
-          }
-          
-          iframeRef.current!.src = embedUrl;
-          
-          // Re-initialize widget with new iframe
-          setTimeout(initializeWidget, 100);
+          updateIframeSource(url);
         }
       });
+    } else if (iframeRef.current) {
+      updateIframeSource(url);
     }
-  }, [currentTrackIndex, currentTracks, widgetReady, isPlaying, autoPlay, showComments, showRelated, visual]);
+  }, [currentTrackIndex, currentTracks, widgetReady, autoPlay, showComments, showRelated, visual, useFallbackMode]);
 
-  // Initialize playlists if none exist in localStorage
-  useEffect(() => {
-    const savedPlaylists = localStorage.getItem('soundcloudPlaylists');
-    if (!savedPlaylists) {
-      setPlaylists([defaultPlaylist]);
+  // Helper function to update the iframe source
+  const updateIframeSource = (url: string) => {
+    if (!iframeRef.current) return;
+    
+    const isPlaylist = isPlaylistUrl(url);
+    
+    let embedUrl = `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}`;
+    embedUrl += `&auto_play=${autoPlay}`;
+    embedUrl += `&hide_related=${!showRelated}`;
+    embedUrl += `&show_comments=${showComments}`;
+    embedUrl += '&show_user=true';
+    embedUrl += '&show_reposts=false';
+    embedUrl += '&show_teaser=true';
+    embedUrl += `&visual=${visual}`;
+    
+    if (isPlaylist) {
+      embedUrl += '&single_active=false';
     }
-  }, []);
+    
+    iframeRef.current.src = embedUrl;
+    
+    // Re-initialize widget after src change
+    setTimeout(initializeWidget, 100);
+  };
 
   // Save playlists to localStorage when they change
   useEffect(() => {
     localStorage.setItem('soundcloudPlaylists', JSON.stringify(playlists));
   }, [playlists]);
 
+  // Simple function to replace the removed ones for event binding
   const handleNextTrack = () => {
-    if (widgetRef.current) {
-      const currentUrl = currentTracks[currentTrackIndex];
-      
-      // Check if current URL is a playlist
-      if (isPlaylistUrl(currentUrl)) {
-        // For SoundCloud playlists, let the widget handle navigation
-        widgetRef.current.getSounds((sounds: any[]) => {
-          if (sounds && sounds.length > 1) {
-            // It's a playlist with multiple tracks, let SoundCloud handle it
-            widgetRef.current?.next();
-          } else {
-            // It looks like a playlist but might be empty, use our app's navigation
-            setCurrentTrackIndex((prevIndex) => (prevIndex + 1) % currentTracks.length);
-          }
-        });
-      } else {
-        // For individual tracks, use our app's navigation
-        setCurrentTrackIndex((prevIndex) => (prevIndex + 1) % currentTracks.length);
-      }
-    } else {
-      setCurrentTrackIndex((prevIndex) => (prevIndex + 1) % currentTracks.length);
-    }
-  };
-
-  const handlePreviousTrack = () => {
-    if (widgetRef.current) {
-      const currentUrl = currentTracks[currentTrackIndex];
-      
-      // Check if current URL is a playlist
-      if (isPlaylistUrl(currentUrl)) {
-        // For SoundCloud playlists, let the widget handle navigation
-        widgetRef.current.getSounds((sounds: any[]) => {
-          if (sounds && sounds.length > 1) {
-            // It's a playlist with multiple tracks, let SoundCloud handle it
-            widgetRef.current?.prev();
-          } else {
-            // It looks like a playlist but might be empty, use our app's navigation
-            setCurrentTrackIndex((prevIndex) => (prevIndex - 1 + currentTracks.length) % currentTracks.length);
-          }
-        });
-      } else {
-        // For individual tracks, use our app's navigation
-        setCurrentTrackIndex((prevIndex) => (prevIndex - 1 + currentTracks.length) % currentTracks.length);
-      }
-    } else {
-      setCurrentTrackIndex((prevIndex) => (prevIndex - 1 + currentTracks.length) % currentTracks.length);
-    }
+    setCurrentTrackIndex((prevIndex) => (prevIndex + 1) % currentTracks.length);
   };
 
   const handlePlayPause = () => {
-    if (widgetRef.current) {
-      if (isPlaying) {
-        widgetRef.current.pause();
-      } else {
-        widgetRef.current.play();
+    console.log('Play/Pause clicked. Widget ready:', widgetReady, 'Fallback mode:', useFallbackMode, 'Current state:', isPlaying);
+    
+    // Use fallback player if in fallback mode
+    if (useFallbackMode && fallbackPlayerRef.current) {
+      try {
+        if (isPlaying) {
+          console.log('Calling fallback pause()');
+          fallbackPlayerRef.current.pause();
+        } else {
+          console.log('Calling fallback play()');
+          fallbackPlayerRef.current.play();
+        }
+        // Let the fallback player events update isPlaying
+      } catch (error) {
+        console.error('Error in fallback play/pause:', error);
       }
+      return;
     }
-    setIsPlaying(!isPlaying);
+    
+    // Use SoundCloud widget if available
+    if (widgetRef.current && widgetReady) {
+      try {
+        if (isPlaying) {
+          console.log('Calling pause()');
+          widgetRef.current.pause();
+        } else {
+          console.log('Calling play()');
+          widgetRef.current.play();
+        }
+      } catch (error) {
+        console.error('Error in play/pause:', error);
+        // Fallback: toggle state directly if widget methods fail
+        setIsPlaying(!isPlaying);
+      }
+    } else {
+      console.warn('Widget not ready, toggling state directly');
+      setIsPlaying(!isPlaying);
+    }
   };
 
   const handleAddTrack = () => {
@@ -376,14 +597,14 @@ const Music: React.FC = () => {
     setSelectedTrackIndex(null);
   };
 
-  // Ensure playlist is not empty before accessing index
-  const soundcloudUrl = currentTracks.length > 0 ? currentTracks[currentTrackIndex] : '';
-
   // Handle settings changes
   const handleVolumeChange = (_event: Event, newValue: number | number[]) => {
     const newVolume = newValue as number;
     setVolume(newVolume);
-    if (widgetRef.current) {
+    
+    if (useFallbackMode && fallbackPlayerRef.current) {
+      fallbackPlayerRef.current.setVolume(newVolume / 100);
+    } else if (widgetRef.current && widgetReady) {
       widgetRef.current.setVolume(newVolume / 100);
     }
   };
@@ -391,7 +612,10 @@ const Music: React.FC = () => {
   const handleMuteToggle = () => {
     const newMuted = !muted;
     setMuted(newMuted);
-    if (widgetRef.current) {
+    
+    if (useFallbackMode && fallbackPlayerRef.current) {
+      fallbackPlayerRef.current.setVolume(newMuted ? 0 : volume / 100);
+    } else if (widgetRef.current && widgetReady) {
       widgetRef.current.setVolume(newMuted ? 0 : volume / 100);
     }
   };
@@ -421,29 +645,8 @@ const Music: React.FC = () => {
   };
 
   const updateIframeSettings = () => {
-    if (widgetReady && widgetRef.current && currentTracks.length > 0) {
-      const url = currentTracks[currentTrackIndex];
-      const isPlaylist = isPlaylistUrl(url);
-      
-      // Build embed URL with updated settings
-      let embedUrl = `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}`;
-      embedUrl += `&auto_play=${autoPlay}`;
-      embedUrl += `&hide_related=${!showRelated}`;
-      embedUrl += `&show_comments=${showComments}`;
-      embedUrl += '&show_user=true';
-      embedUrl += '&show_reposts=false';
-      embedUrl += '&show_teaser=true';
-      embedUrl += `&visual=${visual}`;
-      
-      // For playlists, we don't want to restrict to a single active sound
-      if (isPlaylist) {
-        embedUrl += '&single_active=false';
-      }
-      
-      iframeRef.current!.src = embedUrl;
-      
-      // Re-initialize widget with new iframe
-      setTimeout(initializeWidget, 100);
+    if (iframeRef.current && currentTracks.length > 0) {
+      updateIframeSource(soundcloudUrl);
     }
   };
 
@@ -545,57 +748,13 @@ const Music: React.FC = () => {
         </Tooltip>
       </Box>
       
-      {/* Player Controls - Moved below dropdown and made bigger */}
-      <Stack 
-        direction="row" 
-        spacing={2} 
-        alignItems="center" 
-        justifyContent="center" 
-        sx={{ mb: 2 }}
-      >
-        <Tooltip title="Previous Track">
-          <IconButton 
-            onClick={handlePreviousTrack} 
-            aria-label="previous track" 
-            size="medium"
-            sx={{ color: 'text.primary' }}
-          >
-            <SkipPrevious />
-          </IconButton>
-        </Tooltip>
-
-        <IconButton 
-          onClick={handlePlayPause} 
-          aria-label={isPlaying ? "pause" : "play"} 
-          size="large"
-          sx={{ 
-            color: 'text.primary',
-            bgcolor: 'action.selected',
-            '&:hover': {
-              bgcolor: 'action.hover',
-            },
-          }}
-        >
-          {isPlaying ? <Pause /> : <PlayArrow />}
-        </IconButton>
-
-        <Tooltip title="Next Track">
-          <IconButton 
-            onClick={handleNextTrack} 
-            aria-label="next track" 
-            size="medium"
-            sx={{ color: 'text.primary' }}
-          >
-            <SkipNext />
-          </IconButton>
-        </Tooltip>
-      </Stack>
+      {/* Player Controls section removed */}
     
       {/* Status and Actions */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         {/* Status Indicator */}
         <Box sx={{ flexGrow: 1 }}>
-          {!isPlaylistUrl(soundcloudUrl) && (
+          {soundcloudUrl && !isPlaylistUrl(soundcloudUrl) && (
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
               {currentTracks.length} track{currentTracks.length !== 1 ? 's' : ''}
             </Typography>
