@@ -2,7 +2,7 @@
 
 Make your browser's new tab page useful and beautiful with customizable widgets!
 
-![Widgetopia Screenshot](public/screenshot.png)
+
 
 ## What is Widgetopia?
 
