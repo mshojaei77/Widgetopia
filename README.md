@@ -1,83 +1,63 @@
-# Widgetopia - Chrome New Tab Extension
+# Widgetopia - Your Custom Chrome New Tab Page
 
-A customizable new tab page Chrome extension with useful widgets, built with React, TypeScript, and Bun.
+Make your browser's new tab page useful and beautiful with customizable widgets!
 
-## Features
+![Widgetopia Screenshot](public/screenshot.png)
 
-- **Clock Widget**: Displays current time and date
-- **Weather Widget**: Shows weather information (mock data for now, can be connected to a real API)
-- **Todo List Widget**: Manage your tasks directly from new tabs
-- **Quick Links Widget**: Access your favorite websites quickly
+## What is Widgetopia?
 
-## Tech Stack
+Widgetopia replaces Chrome's default new tab page with a personalized dashboard that includes:
 
-- **Bun**: JavaScript runtime and package manager
-- **React**: UI library
-- **TypeScript**: Type-safe JavaScript
-- **Vite**: Build tool and development server
-- **Chrome Extension API**: Browser integration
+- ⏰ **Clock Widget** - Never lose track of time
+- 🌤️ **Weather Widget** - See the current weather at a glance
+- ✅ **Todo List** - Keep track of your tasks where you'll actually see them
+- 🔗 **Quick Links** - One-click access to your favorite websites
 
-## Development
+## How to Install
 
-### Prerequisites
+### From Chrome Web Store
+1. Visit [Widgetopia on Chrome Web Store](#) *(Coming Soon)*
+2. Click "Add to Chrome"
+3. Open a new tab to see your new dashboard!
 
-- [Bun](https://bun.sh/) installed
-- Google Chrome browser
+### Manual Installation
+1. [Download the latest release](https://github.com/yourusername/widgetopia/releases)
+2. Unzip the file
+3. Open Chrome and go to `chrome://extensions/`
+4. Turn on "Developer mode" (top-right corner)
+5. Click "Load unpacked" and select the unzipped folder
+6. Open a new tab to enjoy your custom dashboard!
 
-### Setup
+## How to Use
 
-1. Clone the repository
-2. Install dependencies:
-   ```
-   bun install
-   ```
-3. Start the development server:
-   ```
-   bun run dev
-   ```
+### Todo Widget
+- Type your task and press Enter to add it
+- Click a task to mark it as complete
+- Click the ❌ to remove a task
 
-### Building the Extension
+### Quick Links
+- Click the + button to add a new link
+- Enter the website URL and a name
+- Click on any link to visit that website
 
-1. Build the extension:
-   ```
-   bun run build
-   ```
-2. This will create a `dist` directory with the built extension.
+### Weather Widget
+- Currently shows sample data (real weather integration coming soon!)
 
-### Loading in Chrome
+## Frequently Asked Questions
 
-1. Open Chrome and navigate to `chrome://extensions`
-2. Enable "Developer mode" in the top-right
-3. Click "Load unpacked" and select the `dist` directory
-4. Open a new tab to see your custom new tab page
+**Q: Will my data be shared or stored online?**
+A: No. All your data stays in your browser using Chrome's built-in storage.
 
-## Project Structure
+**Q: Can I customize the layout?**
+A: Not yet, but we're working on drag-and-drop customization for a future release!
 
-```
-widgetopia/
-├── public/             # Static assets
-│   └── icons/          # Extension icons
-├── src/                # Source code
-│   ├── components/     # Reusable React components
-│   ├── widgets/        # Individual widget components
-│   ├── App.tsx         # Main application component
-│   └── main.tsx        # React entry point
-├── index.html          # HTML entry point
-├── manifest.json       # Chrome extension manifest
-├── vite.config.ts      # Vite configuration
-└── package.json        # Project metadata and dependencies
-```
+**Q: How do I change settings?**
+A: Click the ⚙️ icon in the top-right corner of the new tab page.
 
-## Notes
+## Need Help?
 
-- The extension currently uses Chrome's storage API to persist todo items and quick links.
-- The weather widget uses mock data for demonstration purposes.
-- Icons in the QuickLinks widget are simple emoji characters.
+If you encounter any issues or have questions, please [open an issue](https://github.com/yourusername/widgetopia/issues) on our GitHub repository.
 
-## Future Improvements
+## For Developers
 
-- Connect to real weather API
-- Add more customization options
-- Add settings page
-- Implement drag-and-drop for widget positioning
-- Add more widget types
+If you're interested in contributing to Widgetopia, please see our [CONTRIBUTING.md](CONTRIBUTING.md) file.
