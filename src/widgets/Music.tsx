@@ -239,6 +239,7 @@ const Music: React.FC = () => {
   const [visual, setVisual] = useState<boolean>(true);
   const [autoPlay, setAutoPlay] = useState<boolean>(false);
   const [useFallbackMode, setUseFallbackMode] = useState<boolean>(false);
+  const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('No track selected');
 
   // Current playlist and tracks
   const currentPlaylist = playlists[currentPlaylistIndex] || defaultPlaylist;
@@ -363,6 +364,8 @@ const Music: React.FC = () => {
             widgetRef.current?.getCurrentSound((sound) => {
               if (sound) {
                 console.log('Current sound on ready:', sound);
+                // Update track title from API data
+                setCurrentTrackTitle(sound.title || 'Unknown Track');
               }
             });
           } catch (error) {
@@ -373,6 +376,18 @@ const Music: React.FC = () => {
         widgetRef.current.bind(SC_EVENTS.PLAY, () => {
           console.log('Play event received from SoundCloud widget');
           setIsPlaying(true);
+          
+          // Get current track info when play starts
+          try {
+            widgetRef.current?.getCurrentSound((sound) => {
+              if (sound) {
+                console.log('Current sound on play:', sound);
+                setCurrentTrackTitle(sound.title || 'Unknown Track');
+              }
+            });
+          } catch (error) {
+            console.error('Error getting current sound on play:', error);
+          }
         });
         
         widgetRef.current.bind(SC_EVENTS.PAUSE, () => {
@@ -674,8 +689,9 @@ const Music: React.FC = () => {
       elevation={0} 
       className="glass" 
       sx={{ 
-        p: 2, 
+        p: 3, 
         height: '100%',
+        minHeight: '450px',
         display: 'flex',
         flexDirection: 'column',
         borderRadius: 'var(--radius-lg)',
@@ -783,24 +799,37 @@ const Music: React.FC = () => {
 
       {/* Add Track Dialog */}
       <Dialog open={openDialog} onClose={handleCloseDialog} fullWidth maxWidth="sm">
-        <DialogTitle>Add SoundCloud Track</DialogTitle>
+        <DialogTitle>
+          {trackUrlInput && isPlaylistUrl(trackUrlInput) 
+            ? "Import SoundCloud Playlist" 
+            : "Add SoundCloud Track"}
+        </DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             margin="dense"
-            label="SoundCloud Track URL"
+            label={isPlaylistUrl(trackUrlInput) ? "SoundCloud Playlist URL" : "SoundCloud Track URL"}
             type="url"
             fullWidth
             variant="outlined"
             value={trackUrlInput}
             onChange={(e) => setTrackUrlInput(e.target.value)}
-            placeholder="https://soundcloud.com/artist/track"
+            placeholder="https://soundcloud.com/artist/track-or-playlist"
           />
+          {isPlaylistUrl(trackUrlInput) && (
+            <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 1 }}>
+              This appears to be a playlist URL. It will be added as a single item.
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleAddTrack} variant="contained">
-            Add
+          <Button 
+            onClick={handleAddTrack} 
+            variant="contained"
+            disabled={!trackUrlInput.includes('soundcloud.com')}
+          >
+            {isPlaylistUrl(trackUrlInput) ? "Import Playlist" : "Add Track"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -845,7 +874,7 @@ const Music: React.FC = () => {
               handleOpenDialog();
             }}
           >
-            Add Track
+            Add Track to Current Playlist
           </Button>
           <Button 
             startIcon={<PlaylistAdd />} 
@@ -859,6 +888,22 @@ const Music: React.FC = () => {
             }}
           >
             Create New Playlist
+          </Button>
+          
+          {/* Add a direct SoundCloud playlist import option */}
+          <Button 
+            startIcon={<PlaylistAdd />} 
+            variant="outlined" 
+            size="small" 
+            fullWidth 
+            sx={{ mb: 2 }}
+            onClick={() => {
+              handleCloseSettingsDialog();
+              setTrackUrlInput('');
+              setOpenDialog(true);
+            }}
+          >
+            Import SoundCloud Playlist
           </Button>
           
           <Divider sx={{ my: 2 }} />
@@ -875,10 +920,6 @@ const Music: React.FC = () => {
           <FormControlLabel
             control={<Switch size="small" checked={showComments} onChange={handleToggleComments} />}
             label={<Typography variant="body2">Show comments</Typography>}
-          />
-          <FormControlLabel
-            control={<Switch size="small" checked={showRelated} onChange={handleToggleRelated} />}
-            label={<Typography variant="body2">Show related tracks</Typography>}
           />
           
           <Divider sx={{ my: 2 }} />
