@@ -144,7 +144,12 @@ const CountryFlag = () => {
         const data = await response.json();
         if (data.countryCode) {
           setCountryCode(data.countryCode.toLowerCase());
-          setUseDefaultFlag(false);
+          // If country is Iran, use default flag
+          if (data.countryCode.toLowerCase() === 'ir') {
+            setUseDefaultFlag(true);
+          } else {
+            setUseDefaultFlag(false);
+          }
         } else {
           throw new Error('Could not determine country code from IP');
         }
