@@ -134,6 +134,7 @@ const WidgetWrapper = React.memo<WidgetWrapperProps>(({ widget, widgetProps, edi
 const CountryFlag = () => {
   const [countryCode, setCountryCode] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
+  const [useDefaultFlag, setUseDefaultFlag] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchCountry = async () => {
@@ -143,13 +144,14 @@ const CountryFlag = () => {
         const data = await response.json();
         if (data.countryCode) {
           setCountryCode(data.countryCode.toLowerCase());
+          setUseDefaultFlag(false);
         } else {
           throw new Error('Could not determine country code from IP');
         }
       } catch (error) {
         console.error('Error fetching country from IP:', error);
-        // Default fallback
-        setCountryCode('us');
+        // Use default flag instead of 'us'
+        setUseDefaultFlag(true);
       } finally {
         setLoading(false);
       }
@@ -239,8 +241,8 @@ const CountryFlag = () => {
           }}
         >
           <img 
-            src={`https://flagcdn.com/w80/${countryCode}.png`}
-            alt={`${countryCode} flag`}
+            src={useDefaultFlag ? '/sample/default_flag.png' : `https://flagcdn.com/w80/${countryCode}.png`}
+            alt={useDefaultFlag ? 'Default flag' : `${countryCode} flag`}
             style={{ 
               width: '100%',
               height: '100%',
@@ -287,7 +289,7 @@ const App = () => {
   });
   // Add location state
   const [location, setLocation] = useState<string>(() => {
-    return localStorage.getItem('weatherLocation') || 'Shiraz, Fars, Iran'; // Changed default to match screenshot
+    return localStorage.getItem('weatherLocation') || 'Shiraz'; // Changed default to match screenshot
   });
 
   // Widget Definitions
@@ -345,9 +347,9 @@ const App = () => {
       },
       { 
         id: 3, 
-        title: 'GitHub', 
-        url: 'https://github.com', 
-        icon: 'https://www.google.com/s2/favicons?domain=github.com&sz=64' 
+        title: 'ChatGPT', 
+        url: 'https://chatgpt.com/', 
+        icon: 'https://www.google.com/s2/favicons?domain=chatgpt.com&sz=64' 
       },
       { 
         id: 4, 
@@ -366,6 +368,42 @@ const App = () => {
         title: 'Twitter', 
         url: 'https://twitter.com', 
         icon: 'https://www.google.com/s2/favicons?domain=twitter.com&sz=64' 
+      },
+      { 
+        id: 7, 
+        title: 'Stremio', 
+        url: 'https://www.stremio.com/', 
+        icon: 'https://www.google.com/s2/favicons?domain=stremio.com&sz=64' 
+      },
+      { 
+        id: 8, 
+        title: 'Perplexity', 
+        url: 'https://www.perplexity.ai', 
+        icon: 'https://www.google.com/s2/favicons?domain=perplexity.ai&sz=64' 
+      },
+      { 
+        id: 9, 
+        title: 'SoundCloud', 
+        url: 'https://soundcloud.com/discover', 
+        icon: 'https://www.google.com/s2/favicons?domain=soundcloud.com&sz=64' 
+      },
+      { 
+        id: 10, 
+        title: 'Instagram', 
+        url: 'https://www.instagram.com', 
+        icon: 'https://www.google.com/s2/favicons?domain=instagram.com&sz=64' 
+      },
+      { 
+        id: 11, 
+        title: 'Wikipedia', 
+        url: 'https://wikipedia.org', 
+        icon: 'https://www.google.com/s2/favicons?domain=wikipedia.org&sz=64' 
+      },
+      { 
+        id: 12, 
+        title: 'HuggingFace', 
+        url: 'https://huggingface.co', 
+        icon: 'https://www.google.com/s2/favicons?domain=huggingface.co&sz=64' 
       }
     ];
   });
