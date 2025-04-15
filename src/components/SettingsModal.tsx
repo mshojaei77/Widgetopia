@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Modal, Box, Paper, Typography, List, ListItem, ListItemText, Switch, IconButton, Divider,
-  Tab, Tabs, TextField, Button
+  Tab, Tabs, TextField, Button, Alert
 } from '@mui/material';
 import { Grid } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
@@ -72,6 +72,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [tabValue, setTabValue] = useState(0);
   const [userName, setUserName] = useState(initialUserName);
   const [locationInput, setLocationInput] = useState(currentLocation);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
     setUserName(initialUserName);
@@ -99,6 +100,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleLocationSave = () => {
     onLocationChange(locationInput);
+  };
+
+  const handleClearStorage = () => {
+    setShowResetConfirm(true);
+  };
+
+  const handleConfirmReset = () => {
+    localStorage.clear();
+    setShowResetConfirm(false);
+    window.location.reload(); // Reload to apply cleared settings
+  };
+
+  const handleCancelReset = () => {
+    setShowResetConfirm(false);
   };
 
   // Animation variants
@@ -352,6 +367,92 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       </Box>
                       <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', mt: 1, display: 'block' }}>
                         Enter a city name for weather updates.
+                      </Typography>
+                    </Box>
+                    
+                    {/* Reset Application Settings Section */}
+                    <Box sx={{ mt: 4, mb: 2 }}>
+                      <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)', mb: 3 }} />
+                      <Typography variant="subtitle2" gutterBottom sx={{ 
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        fontWeight: 600,
+                        mb: 2,
+                        textAlign: 'left'
+                      }}>
+                        Reset Application
+                      </Typography>
+                      
+                      {showResetConfirm ? (
+                        <motion.div
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <Alert 
+                            severity="warning" 
+                            sx={{ 
+                              mb: 2,
+                              backgroundColor: 'rgba(180, 83, 9, 0.2)',
+                              color: 'rgba(255, 200, 155, 0.9)',
+                              '& .MuiAlert-icon': {
+                                color: 'rgba(255, 200, 155, 0.9)'
+                              }
+                            }}
+                          >
+                            This will reset all settings and preferences. You'll need to reload the page.
+                          </Alert>
+                          <Box sx={{ display: 'flex', gap: 2 }}>
+                            <Button 
+                              variant="contained" 
+                              color="error"
+                              onClick={handleConfirmReset}
+                              sx={{ 
+                                flex: 1,
+                                backgroundColor: 'rgba(211, 47, 47, 0.8)',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(211, 47, 47, 1)'
+                                }
+                              }}
+                            >
+                              Yes, Reset Everything
+                            </Button>
+                            <Button 
+                              variant="outlined"
+                              onClick={handleCancelReset}
+                              sx={{ 
+                                flex: 1,
+                                borderColor: 'rgba(255, 255, 255, 0.3)',
+                                color: 'white',
+                                '&:hover': {
+                                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                                  backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                                }
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </Box>
+                        </motion.div>
+                      ) : (
+                        <Button 
+                          variant="outlined" 
+                          color="error"
+                          onClick={handleClearStorage}
+                          sx={{ 
+                            width: '100%',
+                            borderColor: 'rgba(211, 47, 47, 0.5)',
+                            color: 'rgba(255, 100, 100, 0.9)',
+                            '&:hover': {
+                              borderColor: 'rgba(211, 47, 47, 0.8)',
+                              backgroundColor: 'rgba(211, 47, 47, 0.08)'
+                            }
+                          }}
+                        >
+                          Reset All Settings
+                        </Button>
+                      )}
+                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', mt: 1, display: 'block' }}>
+                        Clears all saved preferences from browser storage.
                       </Typography>
                     </Box>
                   </motion.div>

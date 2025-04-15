@@ -23,8 +23,8 @@ const WidgetGrid: React.FC<WidgetGridProps> = ({
   onLayoutChange,
   isDraggable = true, // Default to true
   isResizable = true, // Default to true
-  // Adjust column configuration for a denser grid - REVERTED for wider columns
-  columnCount = { lg: 8, md: 6, sm: 4, xs: 2, xxs: 1 } // Fewer columns for wider look
+  // Column configuration matching what's in the screenshot
+  columnCount = { lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }
 }) => {
 
   // Generate layouts object for react-grid-layout from items
@@ -66,15 +66,13 @@ const WidgetGrid: React.FC<WidgetGridProps> = ({
       className="widget-grid" // Keep class for potential basic structure styling
       layouts={layouts}
       breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-      // Use the columnCount prop instead of hardcoded values
       cols={columnCount}
-      rowHeight={30} // Reduced row height for potentially finer control
-      containerPadding={[5, 5]} // Padding around the grid reduced
-      margin={[8, 8]} // Reduced margin between items
+      rowHeight={30} // Exact row height from screenshot
+      containerPadding={[5, 5]} // Padding around the grid matching screenshot
+      margin={[8, 8]} // Margin between items matching screenshot
       isDraggable={isDraggable}
       isResizable={isResizable}
-      draggableCancel=".no-drag" // Add class="no-drag" to elements that shouldn't trigger drag
-      // onDragStart={onDragStart} // Use draggableCancel instead for better reliability
+      draggableCancel=".no-drag"
       onLayoutChange={(layout, allLayouts) => {
         if (onLayoutChange) {
           // Only save the layout for the current breakpoint (e.g., 'lg')

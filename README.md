@@ -15,18 +15,32 @@ Widgetopia replaces Chrome's default new tab page with a personalized dashboard 
 
 ## How to Install
 
-### From Chrome Web Store
-1. Visit [Widgetopia on Chrome Web Store](#) *(Coming Soon)*
-2. Click "Add to Chrome"
-3. Open a new tab to see your new dashboard!
+Currently, Widgetopia is under development and not yet available in the Chrome Web Store. To try it out:
 
-### Manual Installation
-1. [Download the latest release](https://github.com/yourusername/widgetopia/releases)
-2. Unzip the file
-3. Open Chrome and go to `chrome://extensions/`
-4. Turn on "Developer mode" (top-right corner)
-5. Click "Load unpacked" and select the unzipped folder
-6. Open a new tab to enjoy your custom dashboard!
+1. Clone this repository:
+   ```
+   git clone https://github.com/yourusername/widgetopia.git
+   ```
+
+2. Install dependencies using Bun:
+   ```
+   cd widgetopia
+   bun install
+   ```
+
+3. Build the extension:
+   ```
+   bun run build
+   ```
+   This creates a `dist` folder with the built extension.
+
+4. Open Chrome and go to `chrome://extensions/`
+
+5. Turn on "Developer mode" (toggle in the top-right corner)
+
+6. Click "Load unpacked" and select the `dist` folder from your project
+
+7. Open a new tab to enjoy your custom dashboard!
 
 ## How to Use
 

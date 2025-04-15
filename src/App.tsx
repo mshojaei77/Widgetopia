@@ -268,7 +268,7 @@ const App = () => {
     if (storedColumns) {
       return JSON.parse(storedColumns);
     }
-    // Default column configuration - updated to match WidgetGrid
+    // Exactly 12 columns as seen in the screenshot
     return {
       lg: 12, 
       md: 10, 
@@ -283,11 +283,11 @@ const App = () => {
     return localStorage.getItem('selectedWallpaper') || '/wallpapers/forest.jpg';
   });
   const [userName, setUserName] = useState<string>(() => {
-      return localStorage.getItem('userName') || 'Alex';
+      return localStorage.getItem('userName') || 'Mohammad';
   });
   // Add location state
   const [location, setLocation] = useState<string>(() => {
-    return localStorage.getItem('weatherLocation') || 'Tehran'; // Default to Tehran
+    return localStorage.getItem('weatherLocation') || 'Shiraz, Fars, Iran'; // Changed default to match screenshot
   });
 
   // Widget Definitions
@@ -309,22 +309,66 @@ const App = () => {
     if (storedVisibility) {
       return JSON.parse(storedVisibility);
     }
-    // Default visibility
+    // Default visibility to exactly match the screenshot
     return {
-      clock: true, 
+      clock: false, // Clock is turned off in the settings modal
       weather: true,
       todo: true,
       quicklinks: true,
-      calendar: true, // Make Calendar visible by default
-      music: true, // Make Music visible by default
-      rss: true, // Make RSS visible by default
-      github: true, // Make GitHub visible by default
-      timer: true, // Make Timer visible by default
+      calendar: true,
+      music: true,
+      rss: true,
+      github: true,
+      timer: true,
     };
   });
 
   // Quick Links State
-  const [quickLinks, setQuickLinks] = useState<QuickLink[]>([]);
+  const [quickLinks, setQuickLinks] = useState<QuickLink[]>(() => {
+    const storedLinks = localStorage.getItem('quickLinks');
+    if (storedLinks) {
+      return JSON.parse(storedLinks);
+    }
+    // Default quick links
+    return [
+      { 
+        id: 1, 
+        title: 'Google', 
+        url: 'https://www.google.com', 
+        icon: 'https://www.google.com/s2/favicons?domain=google.com&sz=64' 
+      },
+      { 
+        id: 2, 
+        title: 'YouTube', 
+        url: 'https://www.youtube.com', 
+        icon: 'https://www.google.com/s2/favicons?domain=youtube.com&sz=64' 
+      },
+      { 
+        id: 3, 
+        title: 'GitHub', 
+        url: 'https://github.com', 
+        icon: 'https://www.google.com/s2/favicons?domain=github.com&sz=64' 
+      },
+      { 
+        id: 4, 
+        title: 'Reddit', 
+        url: 'https://reddit.com', 
+        icon: 'https://www.google.com/s2/favicons?domain=reddit.com&sz=64' 
+      },
+      { 
+        id: 5, 
+        title: 'LinkedIn', 
+        url: 'https://linkedin.com', 
+        icon: 'https://www.google.com/s2/favicons?domain=linkedin.com&sz=64' 
+      },
+      { 
+        id: 6, 
+        title: 'Twitter', 
+        url: 'https://twitter.com', 
+        icon: 'https://www.google.com/s2/favicons?domain=twitter.com&sz=64' 
+      }
+    ];
+  });
 
   // Todo List State (Assuming TodoList uses this structure)
   const [todos, setTodos] = useState<Todo[]>([]); 
@@ -335,17 +379,16 @@ const App = () => {
     if (storedLayouts) {
       return JSON.parse(storedLayouts);
     }
-    // Default layouts - updated to match the image
+    // Updated layout based on user request
     return {
-      weather: { i: 'weather', x: 0, y: 0, w: 3, h: 4 },
-      calendar: { i: 'calendar', x: 3, y: 0, w: 6, h: 6 },
-      todo: { i: 'todo', x: 9, y: 0, w: 3, h: 6 },
-      clock: { i: 'clock', x: 0, y: 4, w: 3, h: 2 },       // Positioned below weather
-      quicklinks: { i: 'quicklinks', x: 0, y: 6, w: 3, h: 2 }, // Positioned below clock
-      music: { i: 'music', x: 3, y: 6, w: 6, h: 2 }, // Positioned next to calendar, below quicklinks
-      rss: { i: 'rss', x: 9, y: 6, w: 3, h: 2 }, // Positioned below todo
-      github: { i: 'github', x: 0, y: 8, w: 6, h: 4 }, // Position GitHub widget at the bottom
-      timer: { i: 'timer', x: 9, y: 8, w: 3, h: 3 }, // Position Timer widget at the bottom right
+      weather:    { i: 'weather',    x: 0,  y: 0,  w: 3, h: 8 },
+      quicklinks: { i: 'quicklinks', x: 3,  y: 0,  w: 6, h: 4 },
+      calendar:   { i: 'calendar',   x: 9,  y: 0,  w: 3, h: 8 },
+      music:      { i: 'music',      x: 0,  y: 8,  w: 3, h: 10 },
+      todo:       { i: 'todo',       x: 3,  y: 5,  w: 3, h: 8 },
+      timer:      { i: 'timer',      x: 6,  y: 5,  w: 3, h: 8 },
+      rss:        { i: 'rss',        x: 9,  y: 5,  w: 3, h: 10 },
+      github:     { i: 'github',     x: 3,  y: 13, w: 6, h: 6 },
     };
   });
 
