@@ -11,6 +11,7 @@ import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import AddColumnIcon from '@mui/icons-material/KeyboardArrowRight';
 import RemoveColumnIcon from '@mui/icons-material/KeyboardArrowLeft';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
+import FlagIcon from '@mui/icons-material/Flag';
 import type { WidgetConfig, QuickLink, Todo, WidgetLayout } from './types';
 import type { Layout } from 'react-grid-layout';
 
@@ -26,6 +27,9 @@ import Greeting from './components/Greeting'; // Import Greeting
 import SearchBar from './components/SearchBar'; // Import SearchBar
 import WidgetGrid from './components/WidgetGrid'; // Import WidgetGrid component
 import Music from './widgets/Music'; // Import the Music widget
+import RSS from './widgets/RSS'; // Import the RSS widget
+import Github from './widgets/Github'; // Import the GitHub widget
+import Timer from './widgets/Timer'; // Import the Timer widget
 
 // import './App.css'; // Removed as file doesn't exist
 
@@ -126,6 +130,130 @@ const WidgetWrapper = React.memo<WidgetWrapperProps>(({ widget, widgetProps, edi
   );
 });
 
+// Create a country flag component based on IP
+const CountryFlag = () => {
+  const [countryCode, setCountryCode] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchCountry = async () => {
+      try {
+        // Use ip-api.com which seems to have better CORS support for free usage
+        const response = await fetch('http://ip-api.com/json/?fields=countryCode');
+        const data = await response.json();
+        if (data.countryCode) {
+          setCountryCode(data.countryCode.toLowerCase());
+        } else {
+          throw new Error('Could not determine country code from IP');
+        }
+      } catch (error) {
+        console.error('Error fetching country from IP:', error);
+        // Default fallback
+        setCountryCode('us');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCountry();
+  }, []);
+
+  if (loading) {
+    return (
+      <Box sx={{
+        position: 'absolute',
+        top: 16,
+        left: 16,
+        width: 40,
+        height: 40,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(15, 15, 20, 0.5)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '50%',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+        border: '1px solid rgba(255, 255, 255, 0.1)'
+      }}>
+        <Box sx={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }}/>
+      </Box>
+    );
+  }
+
+  return (
+    <Tooltip title={`IP location: ${countryCode.toUpperCase()}`}>
+      <Box 
+        sx={{
+          position: 'absolute',
+          top: 16,
+          left: 16,
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          overflow: 'hidden',
+          cursor: 'pointer',
+          boxShadow: '0 5px 15px rgba(0,0,0,0.25), inset 0 0 0 1.5px rgba(255,255,255,0.75)',
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            transform: 'scale(1.1)',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.3), inset 0 0 0 2px rgba(255,255,255,0.9)',
+          },
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: '2%',
+            left: '5%',
+            width: '90%',
+            height: '50%',
+            background: 'linear-gradient(to bottom, rgba(255,255,255,0.6), rgba(255,255,255,0))',
+            zIndex: 3,
+            borderRadius: '50% / 40% 40% 60% 60%',
+            pointerEvents: 'none',
+            filter: 'blur(1px)',
+          },
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'radial-gradient(circle at 70% 20%, rgba(255,255,255,0.1), transparent 70%)',
+            zIndex: 2,
+            pointerEvents: 'none',
+            opacity: 0.8,
+          }
+        }}
+      >
+        <Box 
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: '#f0f0f0',
+          }}
+        >
+          <img 
+            src={`https://flagcdn.com/w80/${countryCode}.png`}
+            alt={`${countryCode} flag`}
+            style={{ 
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center'
+            }}
+          />
+        </Box>
+      </Box>
+    </Tooltip>
+  );
+};
+
 const App = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showAddLinkForm, setShowAddLinkForm] = useState(false);
@@ -170,6 +298,9 @@ const App = () => {
     { id: 'quicklinks', name: 'Quick Links', component: QuickLinks },
     { id: 'calendar', name: 'Calendar', component: Calendar }, // Add Calendar widget
     { id: 'music', name: 'Music Player', component: Music }, // Add Music widget
+    { id: 'rss', name: 'RSS', component: RSS }, // Add RSS widget
+    { id: 'github', name: 'GitHub Contributions', component: Github }, // Add GitHub widget
+    { id: 'timer', name: 'Working Timer', component: Timer }, // Add Timer widget
   ];
 
   // Widget Visibility State
@@ -186,6 +317,9 @@ const App = () => {
       quicklinks: true,
       calendar: true, // Make Calendar visible by default
       music: true, // Make Music visible by default
+      rss: true, // Make RSS visible by default
+      github: true, // Make GitHub visible by default
+      timer: true, // Make Timer visible by default
     };
   });
 
@@ -209,6 +343,9 @@ const App = () => {
       clock: { i: 'clock', x: 0, y: 4, w: 3, h: 2 },       // Positioned below weather
       quicklinks: { i: 'quicklinks', x: 0, y: 6, w: 3, h: 2 }, // Positioned below clock
       music: { i: 'music', x: 3, y: 6, w: 6, h: 2 }, // Positioned next to calendar, below quicklinks
+      rss: { i: 'rss', x: 9, y: 6, w: 3, h: 2 }, // Positioned below todo
+      github: { i: 'github', x: 0, y: 8, w: 6, h: 4 }, // Position GitHub widget at the bottom
+      timer: { i: 'timer', x: 9, y: 8, w: 3, h: 3 }, // Position Timer widget at the bottom right
     };
   });
 
@@ -536,6 +673,9 @@ const App = () => {
       } else if (widget.id === 'music') {
         // Add Music widget props if needed in the future
         // widgetProps = { /* Add music props here */ };
+      } else if (widget.id === 'rss') {
+        // RSS doesn't need any special props for now
+        widgetProps = {};
       }
       // Add props for other widgets if needed
       
@@ -653,33 +793,96 @@ const App = () => {
       alignItems: 'center', // Center items horizontally
       position: 'relative', // Add relative positioning to parent
     }}>
-      {/* Settings Button - Top Right */}
-      <IconButton
-        aria-label="settings"
-        onClick={handleOpenSettings}
-        sx={{
-          position: 'absolute',
-          top: 16,
-          right: 16,
-          color: 'var(--text-light)',
-          backgroundColor: 'rgba(15, 15, 20, 0.5)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-          width: 48,
-          height: 48,
-          transition: 'all 0.3s ease',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          '&:hover': {
-            backgroundColor: 'rgba(15, 15, 20, 0.7)',
-            transform: 'scale(1.05)',
-            boxShadow: '0 6px 16px rgba(0, 0, 0, 0.3)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-          }
-        }}
-      >
-        <SettingsIcon />
-      </IconButton>
+      {/* Country Flag - Top Left */}
+      <CountryFlag />
+      
+      {/* Top Right Buttons Container */}
+      <Box sx={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 1 }}>
+        {/* Edit/Save Button - Moved to Top Right */}
+        <IconButton
+          aria-label="edit"
+          onClick={handleToggleEditMode}
+          sx={{
+            // Shared styles with Settings button
+            color: 'var(--text-light)',
+            backgroundColor: editMode ? 'rgba(76, 175, 80, 0.5)' : 'rgba(15, 15, 20, 0.5)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+            width: 48,
+            height: 48,
+            transition: 'all 0.3s ease',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            '&:hover': {
+              backgroundColor: editMode ? 'rgba(76, 175, 80, 0.7)' : 'rgba(15, 15, 20, 0.7)',
+              transform: 'scale(1.05)',
+              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.3)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+            }
+          }}
+        >
+          {editMode ? <SaveIcon /> : <EditIcon />}
+        </IconButton>
+
+        {/* Cancel Edit Button - Only shows in edit mode, now top right */}
+        {editMode && (
+          <IconButton
+            aria-label="cancel-edit"
+            onClick={() => {
+              setEditMode(false);
+              setShowColumnControls(false);
+              setSnackbarMessage('Edit mode cancelled');
+              setSnackbarOpen(true);
+            }}
+            sx={{
+              // Match size/style of other top-right buttons
+              color: 'var(--text-light)',
+              backgroundColor: 'rgba(211, 47, 47, 0.5)', // Red background
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+              width: 48,
+              height: 48,
+              transition: 'all 0.3s ease',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              '&:hover': {
+                backgroundColor: 'rgba(211, 47, 47, 0.7)', // Darker red on hover
+                transform: 'scale(1.05)',
+                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.3)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+              }
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        )}
+
+        {/* Settings Button - Remains Top Right */}
+        <IconButton
+          aria-label="settings"
+          onClick={handleOpenSettings}
+          sx={{
+            // No position needed, handled by parent Box
+            color: 'var(--text-light)',
+            backgroundColor: 'rgba(15, 15, 20, 0.5)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+            width: 48,
+            height: 48,
+            transition: 'all 0.3s ease',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            '&:hover': {
+              backgroundColor: 'rgba(15, 15, 20, 0.7)',
+              transform: 'scale(1.05)',
+              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.3)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+            }
+          }}
+        >
+          <SettingsIcon />
+        </IconButton>
+      </Box>
 
       {/* Main Content Area */}
       <Greeting userName={userName} />
@@ -816,37 +1019,6 @@ const App = () => {
               </Button>
             </Box>
           )}
-          
-          {/* Cancel Edit Button */}
-          <IconButton
-            aria-label="cancel-edit"
-            onClick={() => {
-              setEditMode(false);
-              setShowColumnControls(false);
-              setSnackbarMessage('Edit mode cancelled');
-              setSnackbarOpen(true);
-            }}
-            sx={{
-              position: 'fixed',
-              bottom: 16,
-              right: 60, // Position it to the left of the save button
-              color: 'white',
-              backgroundColor: 'rgba(211, 47, 47, 0.7)',
-              backdropFilter: 'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)',
-              boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
-              width: 36,
-              height: 36,
-              transition: 'all 0.3s ease',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              '&:hover': {
-                backgroundColor: 'rgba(211, 47, 47, 0.9)',
-                transform: 'scale(1.05)',
-              }
-            }}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
         </>
       )}
 
@@ -860,35 +1032,6 @@ const App = () => {
           columnCount={columnCount}
         />
       </Box>
-
-      {/* Edit Button - Bottom Right */}
-      <IconButton
-        aria-label="edit"
-        onClick={handleToggleEditMode}
-        sx={{
-          position: 'fixed',
-          bottom: 16,
-          right: 16,
-          color: 'white',
-          backgroundColor: editMode ? 'rgba(76, 175, 80, 0.7)' : 'rgba(15, 15, 20, 0.5)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-          width: 36,
-          height: 36,
-          fontSize: '0.8rem',
-          transition: 'all 0.3s ease',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          '&:hover': {
-            backgroundColor: editMode ? 'rgba(76, 175, 80, 0.9)' : 'rgba(15, 15, 20, 0.7)',
-            transform: 'scale(1.05)',
-            boxShadow: '0 6px 16px rgba(0, 0, 0, 0.3)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-          }
-        }}
-      >
-        {editMode ? <SaveIcon fontSize="small" /> : <EditIcon fontSize="small" />}
-      </IconButton>
 
       {/* Snackbar for notifications */}
       <Snackbar
