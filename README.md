@@ -8,7 +8,7 @@ Currently, Widgetopia is under development and not yet available in the Chrome W
 
 1. Clone this repository:
    ```
-   git clone https://github.com/yourusername/widgetopia.git
+   git clone https://github.com/mshojaei77/widgetopia.git
    ```
 
 2. Install dependencies using Bun:
