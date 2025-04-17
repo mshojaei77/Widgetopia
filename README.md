@@ -38,14 +38,14 @@ Currently, Widgetopia is under development and not yet available in the Chrome W
 A: No. All your data stays in your browser using Chrome's built-in storage.
 
 **Q: Can I customize the layout?**
-A: Not yet, but we're working on drag-and-drop customization for a future release!
+A: Yes, there is drag-and-drop customization now !
 
 **Q: How do I change settings?**
 A: Click the ⚙️ icon in the top-right corner of the new tab page.
 
 ## Need Help?
 
-If you encounter any issues or have questions, please [open an issue](https://github.com/yourusername/widgetopia/issues) on our GitHub repository.
+If you encounter any issues or have questions, please [open an issue](https://github.com/mshojaei77/widgetopia/issues) on our GitHub repository.
 
 ## For Developers
 
