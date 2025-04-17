@@ -93,13 +93,33 @@ const isTrackInPlaylist = (url: string): boolean => {
   return url.includes('?in=') || url.includes('&in=');
 };
 
-// Default playlist structure
-const defaultPlaylist = {
-  name: 'Persian Jazz',
-  tracks: [
-    'https://soundcloud.com/amirali-amiri-284341662/sets/1bkemtkzveqs?si=cef1e136eede4ccb85d4701486cdcd3a&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing',
-  ]
-};
+// New default playlists
+const defaultPlaylists: Playlist[] = [
+  {
+    name: 'Persian Jazz',
+    tracks: [
+      'https://soundcloud.com/amirali-amiri-284341662/sets/1bkemtkzveqs?si=cef1e136eede4ccb85d4701486cdcd3a&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing',
+    ]
+  },
+  {
+    name: 'Persian Golden Era',
+    tracks: [
+      'https://soundcloud.com/mob-fall/sets/g-old?si=37daad98e9604892bf1546e37f265db3&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing',
+    ]
+  },
+  {
+    name: 'Persian Golden Era 2',
+    tracks: [
+      'https://soundcloud.com/jayko-grinding/sets/old-persian-music?si=8fa2d25976a547d9bc143d1d99ce2cb2&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing',
+    ]
+  },
+  {
+    name: "Hits of the 80's",
+    tracks: [
+      'https://soundcloud.com/playlistsmusic/sets/hits-of-the-80s-classic-pop?si=5882f1cc4e2845f6913a8dffeb980140&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing',
+    ]
+  }
+];
 
 // Type definition for a playlist
 interface Playlist {
@@ -217,7 +237,8 @@ const Music: React.FC = () => {
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [playlists, setPlaylists] = useState<Playlist[]>(() => {
     const savedPlaylists = localStorage.getItem('soundcloudPlaylists');
-    return savedPlaylists ? JSON.parse(savedPlaylists) : [defaultPlaylist];
+    // Use the new list of default playlists if nothing is saved
+    return savedPlaylists ? JSON.parse(savedPlaylists) : defaultPlaylists;
   });
   const [currentPlaylistIndex, setCurrentPlaylistIndex] = useState(0);
   const [trackUrlInput, setTrackUrlInput] = useState('');
@@ -242,7 +263,8 @@ const Music: React.FC = () => {
   const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('No track selected');
 
   // Current playlist and tracks
-  const currentPlaylist = playlists[currentPlaylistIndex] || defaultPlaylist;
+  // Ensure currentPlaylist defaults to the first playlist if index is out of bounds
+  const currentPlaylist = playlists[currentPlaylistIndex] || playlists[0] || { name: 'Empty', tracks: [] };
   const currentTracks = currentPlaylist.tracks;
   
   // Make sure soundcloudUrl is available for the UI
@@ -668,7 +690,8 @@ const Music: React.FC = () => {
   const handleClearAllPlaylists = () => {
     if (window.confirm('Are you sure you want to remove all playlists? This cannot be undone.')) {
       localStorage.removeItem('soundcloudPlaylists');
-      setPlaylists([defaultPlaylist]);
+      // Reset to the default list of playlists
+      setPlaylists(defaultPlaylists);
       setCurrentPlaylistIndex(0);
       setCurrentTrackIndex(0);
       setIsPlaying(false);
@@ -746,7 +769,7 @@ const Music: React.FC = () => {
           >
             {playlists.map((playlist: Playlist, index: number) => (
               <MenuItem key={index} value={index.toString()}>
-                {playlist.name} ({playlist.tracks.length})
+                {playlist.name}
               </MenuItem>
             ))}
           </Select>

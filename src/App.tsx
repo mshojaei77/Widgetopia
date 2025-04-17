@@ -376,9 +376,9 @@ const App = () => {
       },
       { 
         id: 7, 
-        title: 'Stremio', 
-        url: 'https://www.stremio.com/', 
-        icon: 'https://www.google.com/s2/favicons?domain=stremio.com&sz=64' 
+        title: 'DeepSeek', 
+        url: 'https://chat.deepseek.com/', 
+        icon: 'https://www.google.com/s2/favicons?domain=deepseek.com&sz=64' 
       },
       { 
         id: 8, 

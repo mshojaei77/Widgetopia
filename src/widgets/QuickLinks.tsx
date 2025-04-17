@@ -154,7 +154,6 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm 
                 <Box
                   component="a"
                   href={link.url}
-                  target="_blank"
                   rel="noopener noreferrer"
                   sx={{
                     display: 'flex', 
