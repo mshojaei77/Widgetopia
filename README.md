@@ -1,6 +1,7 @@
 # Widgetopia - Your Custom Chrome New Tab Page
 
 Make your browser's new tab page useful and beautiful with customizable widgets!
+![image](https://github.com/user-attachments/assets/b64d08cb-f6cb-4713-a6d1-5686e7175e05)
 
 ## How to Install
 
