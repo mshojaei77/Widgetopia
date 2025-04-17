@@ -76,11 +76,9 @@ widgetopia/
 
 ## Future Development Plans
 
-- Connect to real weather API
 - Add more customization options
-- Add settings page
-- Implement drag-and-drop for widget positioning
-- Add more widget types
+- Add more widgets
+- add more browswer (firefox) support
 
 ## Pull Request Guidelines
 
