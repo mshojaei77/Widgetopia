@@ -60,3 +60,7 @@ If you want to build the extension from the source code:
 4. Load the unpacked extension in Chrome (follow steps 3c and 4 from the "Easy Method" above, but select the `dist` folder instead).
 
 If you're interested in contributing to Widgetopia, please see our [CONTRIBUTING.md](CONTRIBUTING.md) file.
+
+## License
+
+Widgetopia is released under the [MIT License](LICENSE). This means you are free to use, modify, distribute, and even use it commercially, as long as you include the original copyright notice. See the [LICENSE](LICENSE) file for full details.
