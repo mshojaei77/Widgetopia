@@ -6,7 +6,7 @@ Make your browser's new tab page useful and beautiful with customizable widgets!
 ## How to Install (Easy Method)
 
 1.  **Download the latest version:**
-    *   Click [here](https://raw.githubusercontent.com/mshojaei77/Widgetopia/refs/heads/main/widgetopia-v1.0.0.zip) to download `widgetopia-v1.0.0.zip`.
+    *   Click [here](https://raw.githubusercontent.com/mshojaei77/Widgetopia/refs/heads/main/widgetopia.zip) to download `widgetopia`.
 
 2.  **Unzip the downloaded file:**
     *   Find the downloaded `widgetopia-v1.0.0.zip` file (usually in your Downloads folder).
