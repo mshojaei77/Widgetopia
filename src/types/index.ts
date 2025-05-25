@@ -50,7 +50,7 @@ export interface WidgetConfig {
  */
 export interface WidgetGridItem {
   id: string;
-  component: JSX.Element;
+  component: React.ReactElement;
   layout: {
     w: number;
     h: number;

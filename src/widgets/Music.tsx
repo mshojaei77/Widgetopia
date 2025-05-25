@@ -261,6 +261,10 @@ const Music: React.FC = () => {
   const [autoPlay, setAutoPlay] = useState<boolean>(false);
   const [useFallbackMode, setUseFallbackMode] = useState<boolean>(false);
   const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('No track selected');
+  
+  // Add state for widget dimensions
+  const [widgetHeight, setWidgetHeight] = useState<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Current playlist and tracks
   // Ensure currentPlaylist defaults to the first playlist if index is out of bounds
@@ -269,6 +273,45 @@ const Music: React.FC = () => {
   
   // Make sure soundcloudUrl is available for the UI
   const soundcloudUrl = currentTracks.length > 0 ? currentTracks[currentTrackIndex] : '';
+
+  // Calculate dynamic iframe height based on widget size
+  const calculateIframeHeight = () => {
+    if (!containerRef.current) return 166; // Default height
+    
+    const containerHeight = containerRef.current.clientHeight;
+    const controlsHeight = 120; // Approximate height for controls and padding
+    const minIframeHeight = 120; // Minimum height for SoundCloud player
+    const maxIframeHeight = Math.max(containerHeight * 0.8, 300); // Max 80% of container or 300px
+    
+    // Calculate available height for iframe
+    const availableHeight = Math.max(containerHeight - controlsHeight, minIframeHeight);
+    
+    // Return constrained height
+    return Math.min(Math.max(availableHeight, minIframeHeight), maxIframeHeight);
+  };
+
+  // Monitor widget size changes
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const height = containerRef.current.clientHeight;
+        setWidgetHeight(height);
+      }
+    };
+
+    // Initial measurement
+    updateDimensions();
+
+    // Set up ResizeObserver for dynamic updates
+    const resizeObserver = new ResizeObserver(updateDimensions);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   // Initialize fallback player
   useEffect(() => {
@@ -475,11 +518,20 @@ const Music: React.FC = () => {
     }
   }, [currentTrackIndex, currentTracks, widgetReady, autoPlay, showComments, showRelated, visual, useFallbackMode]);
 
+  // Update iframe height when widget size changes
+  useEffect(() => {
+    if (iframeRef.current && widgetHeight > 0) {
+      const newHeight = calculateIframeHeight();
+      iframeRef.current.height = newHeight.toString();
+    }
+  }, [widgetHeight]);
+
   // Helper function to update the iframe source
   const updateIframeSource = (url: string) => {
     if (!iframeRef.current) return;
     
     const isPlaylist = isPlaylistUrl(url);
+    const iframeHeight = calculateIframeHeight();
     
     let embedUrl = `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}`;
     embedUrl += `&auto_play=${autoPlay}`;
@@ -495,6 +547,7 @@ const Music: React.FC = () => {
     }
     
     iframeRef.current.src = embedUrl;
+    iframeRef.current.height = iframeHeight.toString();
     
     // Re-initialize widget after src change
     setTimeout(initializeWidget, 100);
@@ -709,49 +762,41 @@ const Music: React.FC = () => {
 
   return (
     <Paper 
+      ref={containerRef}
       elevation={0} 
       className="glass" 
       sx={{ 
-        p: 3, 
+        p: 2, 
         height: '100%',
-        minHeight: '450px',
         display: 'flex',
         flexDirection: 'column',
         borderRadius: 'var(--radius-lg)',
         position: 'relative',
         overflow: 'hidden',
+        gap: 1,
       }}
     >
-      {/* Player */}
+      {/* Compact Header with Playlist Selector and Settings */}
       <Box sx={{ 
-        width: '100%', 
-        height: 'auto', 
-        mb: 2,
-        borderRadius: 'var(--radius-md)',
-        overflow: 'hidden',
-        '& iframe': {
-          borderRadius: 'var(--radius-md)',
-        }
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 1,
+        flexShrink: 0,
+        minHeight: '36px'
       }}>
-        <iframe
-          ref={iframeRef}
-          width="100%"
-          height="166"
-          scrolling="no"
-          frameBorder="no"
-          allow="autoplay"
-          src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(soundcloudUrl)}&auto_play=${autoPlay}&hide_related=${!showRelated}&show_comments=${showComments}&show_user=true&show_reposts=false&show_teaser=true&visual=${visual}${isPlaylistUrl(soundcloudUrl) ? '&single_active=false' : ''}`}
-        ></iframe>
-      </Box>
-      
-      {/* Playlist Selector with Settings button beside it */}
-      <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-        <FormControl variant="outlined" size="small" sx={{ flex: 1, mr: 1 }}>
+        <FormControl variant="outlined" size="small" sx={{ flex: 1, minWidth: 0 }}>
           <Select
             value={currentPlaylistIndex.toString()}
             onChange={handleChangePlaylist}
             displayEmpty
-            sx={{ height: 36 }}
+            sx={{ 
+              height: 32,
+              fontSize: '0.875rem',
+              '& .MuiSelect-select': {
+                py: 0.5,
+                pr: '24px !important'
+              }
+            }}
             renderValue={(selectedIndex) => {
               const index = parseInt(selectedIndex as string, 10);
               return (
@@ -775,36 +820,69 @@ const Music: React.FC = () => {
           </Select>
         </FormControl>
         
-        {/* Settings button beside dropdown */}
         <Tooltip title="Settings">
           <IconButton 
             onClick={handleOpenSettingsDialog}
             size="small"
-            sx={{ color: 'text.primary' }}
+            sx={{ 
+              color: 'text.primary',
+              width: 32,
+              height: 32,
+              flexShrink: 0
+            }}
           >
             <Settings fontSize="small" />
           </IconButton>
         </Tooltip>
       </Box>
       
-      {/* Player Controls section removed */}
-    
-      {/* Status and Actions */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        {/* Status Indicator */}
-        <Box sx={{ flexGrow: 1 }}>
-          {soundcloudUrl && !isPlaylistUrl(soundcloudUrl) && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-              {currentTracks.length} track{currentTracks.length !== 1 ? 's' : ''}
-            </Typography>
-          )}
-        </Box>
-        
-        {/* Action Buttons - Without settings button */}
-        <Box>
-          {/* Removed Add Track and Add Playlist buttons from here */}
-        </Box>
+      {/* Dynamic SoundCloud Player - Takes up remaining space */}
+      <Box sx={{ 
+        flex: 1,
+        width: '100%', 
+        borderRadius: 'var(--radius-md)',
+        overflow: 'hidden',
+        minHeight: 120,
+        '& iframe': {
+          borderRadius: 'var(--radius-md)',
+          width: '100%',
+          height: '100%',
+          border: 'none'
+        }
+      }}>
+        <iframe
+          ref={iframeRef}
+          width="100%"
+          height={calculateIframeHeight()}
+          scrolling="no"
+          frameBorder="no"
+          allow="autoplay"
+          src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(soundcloudUrl)}&auto_play=${autoPlay}&hide_related=${!showRelated}&show_comments=${showComments}&show_user=true&show_reposts=false&show_teaser=true&visual=${visual}${isPlaylistUrl(soundcloudUrl) ? '&single_active=false' : ''}`}
+        ></iframe>
       </Box>
+      
+      {/* Compact Status Footer */}
+      {soundcloudUrl && (
+        <Box sx={{ 
+          flexShrink: 0,
+          minHeight: '20px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <Typography 
+            variant="caption" 
+            color="text.secondary" 
+            sx={{ 
+              fontSize: '0.75rem',
+              opacity: 0.7,
+              textAlign: 'center'
+            }}
+          >
+            {currentTracks.length} track{currentTracks.length !== 1 ? 's' : ''} • {currentPlaylist.name}
+          </Typography>
+        </Box>
+      )}
 
       {/* Track Menu */}
       <Menu

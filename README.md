@@ -3,6 +3,23 @@
 Make your browser's new tab page useful and beautiful with customizable widgets!
 ![image](https://github.com/user-attachments/assets/b64d08cb-f6cb-4713-a6d1-5686e7175e05)
 
+## Features
+
+Widgetopia includes the following widgets:
+
+- **🌤️ Weather Widget** - Current weather conditions for your location
+- **📅 Calendar Widget** - View your schedule and upcoming events
+- **✅ Todo List** - Keep track of your tasks and goals
+- **🔗 Quick Links** - Easy access to your favorite websites
+- **🎵 Music Player** - Control your music playback
+- **📰 RSS Feed Reader** - Stay updated with your favorite news sources
+- **💻 GitHub Contributions** - Track your coding activity
+- **⏱️ Working Timer** - Pomodoro timer for productivity
+- **📚 Browser History** - View your most visited pages with detailed statistics
+- **🕐 Clock Widget** - Display current time (optional)
+
+All widgets are fully customizable and can be arranged, resized, and toggled on/off according to your preferences.
+
 ## How to Install (Easy Method)
 
 1.  **Download the latest version:**
@@ -31,6 +48,11 @@ A: Yes, there is drag-and-drop customization now !
 
 **Q: How do I change settings?**
 A: Click the ⚙️ icon in the top-right corner of the new tab page.
+
+**Q: What permissions does Widgetopia need?**
+A: Widgetopia requires minimal permissions:
+- **Storage**: To save your widget settings and preferences
+- **History**: To display your most visited pages in the Browser History widget (optional - only if you enable this widget)
 
 ## Need Help?
 

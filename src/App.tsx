@@ -12,6 +12,7 @@ import AddColumnIcon from '@mui/icons-material/KeyboardArrowRight';
 import RemoveColumnIcon from '@mui/icons-material/KeyboardArrowLeft';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import FlagIcon from '@mui/icons-material/Flag';
+import DeleteIcon from '@mui/icons-material/Delete';
 import type { WidgetConfig, QuickLink, Todo, WidgetLayout } from './types';
 import type { Layout } from 'react-grid-layout';
 
@@ -30,6 +31,7 @@ import Music from './widgets/Music'; // Import the Music widget
 import RSS from './widgets/RSS'; // Import the RSS widget
 import Github from './widgets/Github'; // Import the GitHub widget
 import Timer from './widgets/Timer'; // Import the Timer widget
+import BrowserHistory from './widgets/BrowserHistory'; // Import the BrowserHistory widget
 
 // import './App.css'; // Removed as file doesn't exist
 
@@ -39,25 +41,33 @@ interface WidgetWrapperProps {
   widgetProps: any;
   editMode: boolean;
   layout: WidgetLayout | undefined;
+  onDelete: (widgetId: string) => void;
 }
 
-const WidgetWrapper = React.memo<WidgetWrapperProps>(({ widget, widgetProps, editMode, layout }) => {
+const WidgetWrapper = React.memo<WidgetWrapperProps>(({ widget, widgetProps, editMode, layout, onDelete }) => {
   return (
     <Box sx={{ 
       height: '100%', 
       position: 'relative',
       border: editMode ? '2px dashed rgba(255, 255, 255, 0.3)' : 'none',
       borderRadius: '8px',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      // Ensure resize handles are not blocked
+      '& .react-resizable-handle': {
+        zIndex: 15, // Higher than other elements
+        opacity: editMode ? 1 : 0, // Only show in edit mode
+        transition: 'opacity 0.2s ease'
+      }
     }}>
       {editMode && (
         <>
           {/* Top drag handle */}
-          <Box sx={{
+          <Box className="drag-handle" sx={{
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
+            height: '32px', // Fixed height
             backgroundColor: 'rgba(15, 15, 20, 0.7)',
             color: 'white',
             padding: '4px 8px',
@@ -65,39 +75,24 @@ const WidgetWrapper = React.memo<WidgetWrapperProps>(({ widget, widgetProps, edi
             justifyContent: 'space-between',
             alignItems: 'center',
             fontSize: '0.8rem',
-            zIndex: 10,
+            zIndex: 12,
             backdropFilter: 'blur(4px)',
             cursor: 'move'
           }}>
             <DragIndicatorIcon fontSize="small" />
             <Typography variant="caption">{widget.name}</Typography>
-          </Box>
-          
-          {/* Bottom-right resize handle */}
-          <Box sx={{
-            position: 'absolute',
-            bottom: 4,
-            right: 4,
-            backgroundColor: 'rgba(76, 175, 80, 0.7)',
-            color: 'white',
-            borderRadius: '50%',
-            width: 24,
-            height: 24,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 10,
-            cursor: 'nwse-resize',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            opacity: 0.8,
-            '&:hover': {
-              opacity: 1,
-              transform: 'scale(1.1)'
-            },
-            transition: 'all 0.2s ease'
-          }}>
-            <OpenWithIcon style={{ fontSize: 14 }} />
+            <IconButton
+              aria-label="delete-widget"
+              onClick={() => onDelete(widget.id)}
+              className="no-drag" // Prevent dragging when clicking delete
+              sx={{
+                color: 'white',
+                padding: '4px',
+                '&:hover': { color: 'rgba(255,0,0,0.8)' }
+              }}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
           </Box>
           
           {/* Size indicator */}
@@ -110,19 +105,28 @@ const WidgetWrapper = React.memo<WidgetWrapperProps>(({ widget, widgetProps, edi
             padding: '2px 6px',
             borderRadius: '4px',
             fontSize: '0.7rem',
-            zIndex: 10,
+            zIndex: 11,
             backdropFilter: 'blur(4px)',
-            opacity: 0.7
+            opacity: 0.7,
+            pointerEvents: 'none' // Don't interfere with resize handles
           }}>
             {`${layout?.w || 2} × ${layout?.h || 2}`}
           </Box>
         </>
       )}
-      <Box sx={{ 
-        height: editMode ? 'calc(100% - 32px)' : '100%', 
-        overflow: 'auto',
-        pt: editMode ? 4 : 0
-      }}>
+      <Box 
+        className="no-drag" // Prevent dragging from widget content
+        sx={{ 
+          height: '100%', 
+          overflow: 'auto',
+          // Use a consistent content area that accounts for the header
+          ...(editMode ? {
+            paddingTop: '32px',
+            boxSizing: 'border-box'
+          } : {}),
+          position: 'relative'
+        }}
+      >
         {/* Use JSX syntax directly */}
         <widget.component {...widgetProps} />
       </Box>
@@ -308,6 +312,7 @@ const App = () => {
     { id: 'rss', name: 'RSS', component: RSS }, // Add RSS widget
     { id: 'github', name: 'GitHub Contributions', component: Github }, // Add GitHub widget
     { id: 'timer', name: 'Working Timer', component: Timer }, // Add Timer widget
+    { id: 'browserhistory', name: 'Browser History', component: BrowserHistory }, // Add BrowserHistory widget
   ];
 
   // Widget Visibility State
@@ -327,8 +332,12 @@ const App = () => {
       rss: true,
       github: true,
       timer: true,
+      browserhistory: false, // Browser History widget - default off
     };
   });
+
+  // Temporary widget visibility state during edit sessions
+  const [tempWidgetVisibility, setTempWidgetVisibility] = useState<Record<string, boolean>>(() => widgetVisibility);
 
   // Quick Links State
   const [quickLinks, setQuickLinks] = useState<QuickLink[]>(() => {
@@ -432,11 +441,21 @@ const App = () => {
       timer:      { i: 'timer',      x: 6,  y: 5,  w: 3, h: 8 },
       rss:        { i: 'rss',        x: 9,  y: 5,  w: 3, h: 10 },
       github:     { i: 'github',     x: 3,  y: 13, w: 6, h: 6 },
+      browserhistory: { i: 'browserhistory', x: 0, y: 18, w: 4, h: 10 }, // Browser History widget
     };
   });
 
+  // Temporary widget layout state during edit sessions
+  const [tempWidgetLayouts, setTempWidgetLayouts] = useState<Record<string, WidgetLayout>>(() => widgetLayouts);
+
   // Track previous column count for comparison
   const prevColumnCount = useRef(columnCount.lg);
+
+  // Add state for openInNewTab
+  const [openQuickLinksInNewTab, setOpenQuickLinksInNewTab] = useState(() => {
+    const stored = localStorage.getItem('openQuickLinksInNewTab');
+    return stored ? JSON.parse(stored) : true; // default true for better UX
+  });
 
   // Fetch initial data from storage
   useEffect(() => {
@@ -537,6 +556,11 @@ const App = () => {
     localStorage.setItem('columnCount', JSON.stringify(columnCount));
   }, [columnCount]);
 
+  // Persist openInNewTab
+  useEffect(() => {
+    localStorage.setItem('openQuickLinksInNewTab', JSON.stringify(openQuickLinksInNewTab));
+  }, [openQuickLinksInNewTab]);
+
   // Calculate optimal widget layout based on column count
   const generateOptimalLayout = useCallback(() => {
     const newLayouts: Record<string, WidgetLayout> = {};
@@ -618,23 +642,25 @@ const App = () => {
 
   const handleToggleEditMode = () => {
     if (editMode) {
-      // Exiting edit mode, save any changes
-      setSnackbarMessage('Widget layout saved!');
+      // Exiting edit mode, apply deletions and layout changes
+      setWidgetVisibility(tempWidgetVisibility);
+      setWidgetLayouts(tempWidgetLayouts);
+      setSnackbarMessage('Changes saved!');
       setSnackbarOpen(true);
     } else {
-      // Entering edit mode
-      setSnackbarMessage('You can now move and resize widgets');
+      // Entering edit mode, initialize temporary visibility and layouts
+      setTempWidgetVisibility(widgetVisibility);
+      setTempWidgetLayouts(widgetLayouts);
+      setSnackbarMessage('You can now move, resize, or delete widgets');
       setSnackbarOpen(true);
     }
     setEditMode(!editMode);
   };
 
   const handleLayoutChange = (layout: Layout[]) => {
-    // Only save layouts if in edit mode
+    // Only update temporary layouts during edit mode
     if (editMode) {
-      const newLayouts = { ...widgetLayouts };
-      
-      // Update each widget's layout based on the new layout
+      const newLayouts = { ...tempWidgetLayouts };
       layout.forEach(item => {
         newLayouts[item.i] = {
           i: item.i,
@@ -644,13 +670,22 @@ const App = () => {
           h: item.h
         };
       });
-      
-      setWidgetLayouts(newLayouts);
+      setTempWidgetLayouts(newLayouts);
     }
   };
 
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
+  };
+
+  // Add handler to disable (delete) a widget in edit mode
+  const handleDisableWidget = (widgetId: string) => {
+    setTempWidgetVisibility(prev => ({
+      ...prev,
+      [widgetId]: false,
+    }));
+    setSnackbarMessage('Widget marked for deletion');
+    setSnackbarOpen(true);
   };
 
   // Column count handlers
@@ -710,7 +745,7 @@ const App = () => {
     // Pass necessary props to each widget
     let widgetProps: any = {};
     if (widgetId === 'quicklinks') {
-      widgetProps = { links: quickLinks, setLinks: setQuickLinks, onShowAddForm: handleShowAddLinkForm };
+      widgetProps = { links: quickLinks, setLinks: setQuickLinks, onShowAddForm: handleShowAddLinkForm, openInNewTab: openQuickLinksInNewTab };
     }
     if (widgetId === 'todo') {
         // Assuming TodoList accepts todos and setTodos
@@ -743,7 +778,7 @@ const App = () => {
 
   // Prepare WidgetGrid items
   const gridItems = availableWidgets
-    .filter(widget => widgetVisibility[widget.id])
+    .filter(widget => (editMode ? tempWidgetVisibility[widget.id] : widgetVisibility[widget.id]))
     .map(widget => {
       // Pass necessary props to each widget component based on its type
       let widgetProps: any = {};
@@ -755,106 +790,18 @@ const App = () => {
         // Calendar doesn't need any special props for now
         widgetProps = {};
       } else if (widget.id === 'quicklinks') {
-        widgetProps = { links: quickLinks, setLinks: setQuickLinks, onShowAddForm: handleShowAddLinkForm };
+        widgetProps = { links: quickLinks, setLinks: setQuickLinks, onShowAddForm: handleShowAddLinkForm, openInNewTab: openQuickLinksInNewTab };
       } else if (widget.id === 'music') {
         // Add Music widget props if needed in the future
         // widgetProps = { /* Add music props here */ };
       } else if (widget.id === 'rss') {
         // RSS doesn't need any special props for now
         widgetProps = {};
+      } else if (widget.id === 'browserhistory') {
+        // Browser History doesn't need any special props for now
+        widgetProps = {};
       }
       // Add props for other widgets if needed
-      
-      // Create a wrapper component that adds edit mode indicators
-      // REMOVED INLINE DEFINITION
-      /*
-      const WrappedComponent = () => (
-        <Box sx={{ 
-          height: '100%', 
-          position: 'relative',
-          border: editMode ? '2px dashed rgba(255, 255, 255, 0.3)' : 'none',
-          borderRadius: '8px',
-          overflow: 'hidden'
-        }}>
-          {editMode && (
-            <>
-              
-              <Box sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                backgroundColor: 'rgba(15, 15, 20, 0.7)',
-                color: 'white',
-                padding: '4px 8px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: '0.8rem',
-                zIndex: 10,
-                backdropFilter: 'blur(4px)',
-                cursor: 'move'
-              }}>
-                <DragIndicatorIcon fontSize="small" />
-                <Typography variant="caption">{widget.name}</Typography>
-              </Box>
-              
-              
-              <Box sx={{
-                position: 'absolute',
-                bottom: 4,
-                right: 4,
-                backgroundColor: 'rgba(76, 175, 80, 0.7)',
-                color: 'white',
-                borderRadius: '50%',
-                width: 24,
-                height: 24,
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                zIndex: 10,
-                cursor: 'nwse-resize',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                opacity: 0.8,
-                '&:hover': {
-                  opacity: 1,
-                  transform: 'scale(1.1)'
-                },
-                transition: 'all 0.2s ease'
-              }}>
-                <OpenWithIcon style={{ fontSize: 14 }} />
-              </Box>
-              
-              
-              <Box sx={{
-                position: 'absolute',
-                bottom: 4,
-                left: 4,
-                backgroundColor: 'rgba(15, 15, 20, 0.7)',
-                color: 'white',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                fontSize: '0.7rem',
-                zIndex: 10,
-                backdropFilter: 'blur(4px)',
-                opacity: 0.7
-              }}>
-                {`${widgetLayouts[widget.id]?.w || 2} × ${widgetLayouts[widget.id]?.h || 2}`}
-              </Box>
-            </>
-          )}
-          <Box sx={{ 
-            height: editMode ? 'calc(100% - 32px)' : '100%', 
-            overflow: 'auto',
-            pt: editMode ? 4 : 0
-          }}>
-            
-            {React.createElement(widget.component as any, widgetProps)}
-          </Box>
-        </Box>
-      );
-      */
       
       return {
         id: widget.id,
@@ -863,10 +810,11 @@ const App = () => {
             widget={widget}
             widgetProps={widgetProps}
             editMode={editMode}
-            layout={widgetLayouts[widget.id]}
+            layout={editMode ? tempWidgetLayouts[widget.id] : widgetLayouts[widget.id]}
+            onDelete={handleDisableWidget}
           />
         ),
-        layout: widgetLayouts[widget.id] || { w: 2, h: 2, x: 0, y: 0 }
+        layout: (editMode ? tempWidgetLayouts[widget.id] : widgetLayouts[widget.id]) || { w: 2, h: 2, x: 0, y: 0 }
       };
     });
 
@@ -999,10 +947,10 @@ const App = () => {
             }}
           >
             <DragIndicatorIcon fontSize="small" />
-            <span>Drag to move</span>
+            <span>Drag header to move</span>
             <Box sx={{ mx: 1, color: 'rgba(255,255,255,0.5)' }}>•</Box>
             <OpenWithIcon fontSize="small" />
-            <span>Resize from corner</span>
+            <span>Resize from edges/corners</span>
           </Typography>
           
           {/* Column controls toggle button */}
@@ -1140,12 +1088,12 @@ const App = () => {
         availableWidgets={availableWidgets.map(w => ({ id: w.id, name: w.name }))}
         currentWallpaper={currentWallpaper}
         onWallpaperChange={handleWallpaperChange}
-        // Pass location props
         currentLocation={location}
         onLocationChange={handleLocationChange}
-        // Pass username props
         userName={userName}
         onUserNameChange={handleUserNameChange}
+        openQuickLinksInNewTab={openQuickLinksInNewTab}
+        setOpenQuickLinksInNewTab={setOpenQuickLinksInNewTab}
       />
 
       <AddQuickLinkForm

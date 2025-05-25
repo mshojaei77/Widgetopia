@@ -20,28 +20,29 @@ Thank you for your interest in contributing to Widgetopia! This guide will help 
 ### Getting Started
 
 1. Clone the repository
+
    ```
    git clone https://github.com/yourusername/widgetopia.git
    cd widgetopia
    ```
-
 2. Install dependencies:
+
    ```
    bun install
    ```
-
 3. Start the development server:
+
    ```
-   bun run dev
+   https://github.com/trendingbun run dev
    ```
 
 ### Building the Extension
 
 1. Build the extension:
+
    ```
    bun run build
    ```
-
 2. This will create a `dist` directory with the built extension.
 
 ### Testing in Chrome
@@ -89,4 +90,4 @@ widgetopia/
 
 ## Questions?
 
-Feel free to open an issue if you have any questions or need clarification about the codebase. 
+Feel free to open an issue if you have any questions or need clarification about the codebase.

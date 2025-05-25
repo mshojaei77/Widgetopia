@@ -19,6 +19,8 @@ interface SettingsModalProps {
   onLocationChange: (location: string) => void;
   userName: string;
   onUserNameChange: (name: string) => void;
+  openQuickLinksInNewTab: boolean;
+  setOpenQuickLinksInNewTab: (val: boolean) => void;
 }
 
 interface TabPanelProps {
@@ -68,6 +70,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onLocationChange,
   userName: initialUserName,
   onUserNameChange,
+  openQuickLinksInNewTab,
+  setOpenQuickLinksInNewTab,
 }) => {
   const [tabValue, setTabValue] = useState(0);
   const [userName, setUserName] = useState(initialUserName);
@@ -367,6 +371,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       </Box>
                       <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', mt: 1, display: 'block' }}>
                         Enter a city name for weather updates.
+                      </Typography>
+                    </Box>
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="body2" gutterBottom sx={{ color: 'rgba(255, 255, 255, 0.8)', fontWeight: 500, mb: 1, textAlign: 'left' }}>
+                        Open Quick Links in New Tab
+                      </Typography>
+                      <Switch
+                        checked={openQuickLinksInNewTab}
+                        onChange={e => setOpenQuickLinksInNewTab(e.target.checked)}
+                        color="primary"
+                        inputProps={{ 'aria-label': 'Open Quick Links in New Tab' }}
+                      />
+                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', ml: 1 }}>
+                        When enabled, quick links open in a new browser tab. Otherwise, they open in the same tab.
                       </Typography>
                     </Box>
                     

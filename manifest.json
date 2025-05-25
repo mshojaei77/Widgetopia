@@ -18,5 +18,5 @@
     },
     "default_title": "Widgetopia"
   },
-  "permissions": ["storage"]
+  "permissions": ["storage", "history"]
 } 
