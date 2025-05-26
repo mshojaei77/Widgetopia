@@ -212,7 +212,7 @@ class SecureStorage {
 class OAuth2Security {
   private static readonly GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
   private static readonly GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
-  private static readonly REDIRECT_URI = (typeof chrome !== 'undefined' && chrome.identity) ? chrome.identity.getRedirectURL() : 'http://localhost:3000/oauth/callback';
+  public static readonly REDIRECT_URI = (typeof chrome !== 'undefined' && chrome.identity) ? chrome.identity.getRedirectURL() : 'http://localhost:3000/oauth/callback';
   
   // Generate PKCE challenge for OAuth 2.0 security
   static async generatePKCE(): Promise<{ codeVerifier: string; codeChallenge: string }> {
@@ -501,6 +501,11 @@ const NotesReminders: React.FC = () => {
     severity: 'info'
   });
   
+  // State for settings dialog inputs
+  const [settingsActiveTab, setSettingsActiveTab] = useState(0); // Tabs within Settings Dialog
+  const [telegramBotTokenInput, setTelegramBotTokenInput] = useState('');
+  const [telegramChatIdInput, setTelegramChatIdInput] = useState('');
+  
   // Form state
   const [newItemTitle, setNewItemTitle] = useState('');
   const [newItemContent, setNewItemContent] = useState('');
@@ -515,6 +520,8 @@ const NotesReminders: React.FC = () => {
   // Refs
   const autoLogoutTimer = useRef<NodeJS.Timeout | null>(null);
   const reauthTimer = useRef<NodeJS.Timeout | null>(null);
+  
+  const GOOGLE_CLIENT_ID_IS_SET = !!(import.meta.env.VITE_GOOGLE_CLIENT_ID);
   
   // Load data on mount
   useEffect(() => {
@@ -1674,189 +1681,339 @@ const NotesReminders: React.FC = () => {
           <SettingsIcon />
           Settings & Integrations
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ "& ul": { pl: 2 } }}> {/* Added padding for lists inside DialogContent */}
           <Tabs
-            value={0}
+            value={settingsActiveTab}
+            onChange={(_, newValue) => setSettingsActiveTab(newValue)}
             sx={{
               mb: 3,
-              '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.7)' },
-              '& .Mui-selected': { color: 'white' },
+              '& .MuiTab-root': { 
+                color: 'rgba(255, 255, 255, 0.7)',
+                '&.Mui-selected': {
+                  color: 'white',
+                }
+              },
               '& .MuiTabs-indicator': { backgroundColor: 'var(--primary-color)' }
             }}
+            aria-label="Settings Tabs"
           >
-            <Tab label="Integrations" />
-            <Tab label="Security" />
+            <Tab label="Integrations" id="settings-tab-0" aria-controls="settings-tabpanel-0" />
+            <Tab label="Security" id="settings-tab-1" aria-controls="settings-tabpanel-1" />
+            <Tab label="Setup Guide" id="settings-tab-2" aria-controls="settings-tabpanel-2" />
           </Tabs>
           
-          {/* Google Calendar Integration */}
-          <Card sx={{ mb: 2, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <GoogleIcon sx={{ color: '#4285f4' }} />
-                  <Typography variant="h6" sx={{ color: 'white' }}>
-                    Google Calendar
-                  </Typography>
-                  {authState.google.isAuthenticated && (
-                    <CheckCircleIcon sx={{ color: '#4caf50', fontSize: 20 }} />
-                  )}
-                </Box>
-                <Button
-                  variant={authState.google.isAuthenticated ? 'outlined' : 'contained'}
-                  onClick={authState.google.isAuthenticated ? handleLogout : handleGoogleAuth}
-                  disabled={loading}
-                  sx={{
-                    bgcolor: authState.google.isAuthenticated ? 'transparent' : 'var(--primary-color)',
-                    borderColor: authState.google.isAuthenticated ? 'rgba(255, 255, 255, 0.3)' : 'var(--primary-color)',
-                    color: 'white'
-                  }}
-                >
-                  {authState.google.isAuthenticated ? 'Disconnect' : 'Connect'}
-                </Button>
-              </Box>
-              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                Sync your calendar events as reminders. Uses secure OAuth 2.0 with PKCE for authentication.
-              </Typography>
-              {authState.google.error && (
-                <Alert severity="error" sx={{ mt: 1 }}>
-                  {authState.google.error}
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Telegram Integration */}
-          <Card sx={{ mb: 2, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <TelegramIcon sx={{ color: '#0088cc' }} />
-                  <Typography variant="h6" sx={{ color: 'white' }}>
-                    Telegram Saved Messages
-                  </Typography>
-                  {authState.telegram.isAuthenticated && (
-                    <CheckCircleIcon sx={{ color: '#4caf50', fontSize: 20 }} />
-                  )}
-                </Box>
-                <Button
-                  variant={authState.telegram.isAuthenticated ? 'outlined' : 'contained'}
-                  onClick={() => {
-                    if (authState.telegram.isAuthenticated) {
-                      handleLogout();
-                    } else {
-                      // Show Telegram setup dialog
-                      const botToken = prompt('Enter your Telegram Bot Token:');
-                      const chatId = prompt('Enter your Chat ID:');
-                      if (botToken && chatId) {
-                        handleTelegramAuth(botToken, chatId);
+          {/* Integrations Tab Panel */}
+          <Box role="tabpanel" hidden={settingsActiveTab !== 0} id="settings-tabpanel-0" aria-labelledby="settings-tab-0">
+            {!GOOGLE_CLIENT_ID_IS_SET && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Google Client ID is not configured. Please set VITE_GOOGLE_CLIENT_ID in your .env file to enable Google Calendar integration.
+              </Alert>
+            )}
+            <Card sx={{ mb: 2, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <GoogleIcon sx={{ color: '#4285f4' }} />
+                    <Typography variant="h6" sx={{ color: 'white' }}>
+                      Google Calendar
+                    </Typography>
+                    {authState.google.isAuthenticated && (
+                      <CheckCircleIcon sx={{ color: '#4caf50', fontSize: 20 }} />
+                    )}
+                  </Box>
+                  <Button
+                    variant={authState.google.isAuthenticated ? 'outlined' : 'contained'}
+                    onClick={authState.google.isAuthenticated ? handleLogout : handleGoogleAuth}
+                    disabled={loading || !GOOGLE_CLIENT_ID_IS_SET}
+                    sx={{
+                      bgcolor: authState.google.isAuthenticated ? 'transparent' : (GOOGLE_CLIENT_ID_IS_SET ? 'var(--primary-color)' : 'grey.700'),
+                      borderColor: authState.google.isAuthenticated ? 'rgba(255, 255, 255, 0.3)' : (GOOGLE_CLIENT_ID_IS_SET ? 'var(--primary-color)' : 'grey.700'),
+                      color: 'white',
+                      '&:hover': {
+                        bgcolor: authState.google.isAuthenticated ? 'rgba(255,255,255,0.1)' : (GOOGLE_CLIENT_ID_IS_SET ? 'var(--primary-color-dark)' : 'grey.700'),
                       }
-                    }
-                  }}
-                  disabled={loading}
-                  sx={{
-                    bgcolor: authState.telegram.isAuthenticated ? 'transparent' : 'var(--primary-color)',
-                    borderColor: authState.telegram.isAuthenticated ? 'rgba(255, 255, 255, 0.3)' : 'var(--primary-color)',
-                    color: 'white'
-                  }}
-                >
-                  {authState.telegram.isAuthenticated ? 'Disconnect' : 'Setup'}
-                </Button>
-              </Box>
-              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                Import your saved messages as notes. Requires a Telegram bot token and your chat ID.
-              </Typography>
-              {authState.telegram.error && (
-                <Alert severity="error" sx={{ mt: 1 }}>
-                  {authState.telegram.error}
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Security Settings */}
-          <Card sx={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <SecurityIcon sx={{ color: '#ff9800' }} />
-                <Typography variant="h6" sx={{ color: 'white' }}>
-                  Security Settings
+                    }}
+                  >
+                    {authState.google.isAuthenticated ? 'Disconnect' : 'Connect'}
+                  </Button>
+                </Box>
+                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>
+                  Sync your calendar events as reminders. Uses secure OAuth 2.0 with PKCE.
                 </Typography>
-              </Box>
-              
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={securityConfig.enableEncryption}
-                    onChange={(e) => setSecurityConfig(prev => ({ ...prev, enableEncryption: e.target.checked }))}
-                  />
-                }
-                label="Enable data encryption"
-                sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 1 }}
-              />
-              
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={securityConfig.autoLogout}
-                    onChange={(e) => setSecurityConfig(prev => ({ ...prev, autoLogout: e.target.checked }))}
-                  />
-                }
-                label="Auto logout after inactivity"
-                sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 1 }}
-              />
-              
-              {securityConfig.autoLogout && (
-                <TextField
-                  label="Logout after (minutes)"
-                  type="number"
-                  value={securityConfig.logoutAfterMinutes}
-                  onChange={(e) => setSecurityConfig(prev => ({ ...prev, logoutAfterMinutes: parseInt(e.target.value) || 30 }))}
-                  sx={{
-                    ml: 4,
-                    mb: 1,
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' }
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiInputBase-input': { color: 'white' }
-                  }}
+                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                  Ensure your Redirect URI (e.g., {OAuth2Security.REDIRECT_URI}) is authorized in Google Cloud Console. For web use without an extension, a callback handler at this URI is required.
+                </Typography>
+                {authState.google.error && (
+                  <Alert severity="error" sx={{ mt: 1 }}>
+                    {authState.google.error}
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+            
+            <Card sx={{ mb: 2, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <TelegramIcon sx={{ color: '#0088cc' }} />
+                    <Typography variant="h6" sx={{ color: 'white' }}>
+                      Telegram Saved Messages
+                    </Typography>
+                    {authState.telegram.isAuthenticated && (
+                      <CheckCircleIcon sx={{ color: '#4caf50', fontSize: 20 }} />
+                    )}
+                  </Box>
+                  {!authState.telegram.isAuthenticated && (
+                    <Button
+                      variant="contained"
+                      onClick={() => {
+                        if (telegramBotTokenInput && telegramChatIdInput) {
+                          handleTelegramAuth(telegramBotTokenInput, telegramChatIdInput);
+                        } else {
+                          showSnackbar('Please enter Bot Token and Chat ID.', 'warning');
+                        }
+                      }}
+                      disabled={loading || !telegramBotTokenInput || !telegramChatIdInput}
+                      sx={{ bgcolor: 'var(--primary-color)', color: 'white', '&:hover': { bgcolor: 'var(--primary-color-dark)'} }}
+                    >
+                      Connect
+                    </Button>
+                  )}
+                  {authState.telegram.isAuthenticated && (
+                     <Button
+                        variant="outlined"
+                        onClick={() => {
+                            setAuthState(prev => ({...prev, telegram: {isAuthenticated: false}}));
+                            setTelegramBotTokenInput('');
+                            setTelegramChatIdInput('');
+                            showSnackbar('Telegram disconnected.', 'info');
+                        }}
+                        disabled={loading}
+                        sx={{ borderColor: 'rgba(255, 255, 255, 0.3)', color: 'white', '&:hover': { borderColor: 'white', backgroundColor: 'rgba(255,255,255,0.1)' } }}
+                    >
+                        Disconnect
+                    </Button>
+                  )}
+                </Box>
+                {!authState.telegram.isAuthenticated && (
+                  <>
+                    <TextField
+                      label="Telegram Bot Token"
+                      fullWidth
+                      value={telegramBotTokenInput}
+                      onChange={(e) => setTelegramBotTokenInput(e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      margin="dense"
+                      placeholder="e.g., 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+                      helperText="Create a bot with @BotFather on Telegram to get a token."
+                      sx={{ 
+                        mb: 1,
+                        '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
+                        '& .MuiInputBase-input': { color: 'white' },
+                        '& .MuiOutlinedInput-root': {
+                          '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                          '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.4)' },
+                        },
+                        '& .MuiFormHelperText-root': { color: 'rgba(255, 255, 255, 0.5)'}
+                      }}
+                    />
+                    <TextField
+                      label="Your Chat ID"
+                      fullWidth
+                      value={telegramChatIdInput}
+                      onChange={(e) => setTelegramChatIdInput(e.target.value)}
+                      variant="outlined"
+                      size="small"
+                      margin="dense"
+                      placeholder="e.g., 123456789"
+                      helperText="You can get your Chat ID from bots like @userinfobot on Telegram."
+                      sx={{ 
+                        mb: 1,
+                        '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
+                        '& .MuiInputBase-input': { color: 'white' },
+                        '& .MuiOutlinedInput-root': {
+                          '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                          '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.4)' },
+                        },
+                        '& .MuiFormHelperText-root': { color: 'rgba(255, 255, 255, 0.5)'}
+                      }}
+                    />
+                  </>
+                )}
+                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: authState.telegram.isAuthenticated ? 0 : 1 }}>
+                  Import your saved messages (messages sent to your bot or from your bot in your private chat) as notes.
+                </Typography>
+                {authState.telegram.error && (
+                  <Alert severity="error" sx={{ mt: 1 }}>
+                    {`Connection failed: ${authState.telegram.error}. Please check your token and Chat ID.`}
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          </Box>
+
+          {/* Security Tab Panel */}
+          <Box role="tabpanel" hidden={settingsActiveTab !== 1} id="settings-tabpanel-1" aria-labelledby="settings-tab-1">
+            <Card sx={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                  <SecurityIcon sx={{ color: '#ff9800' }} />
+                  <Typography variant="h6" sx={{ color: 'white' }}>
+                    Security Settings
+                  </Typography>
+                </Box>
+                
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  The current data encryption uses a simple method for demonstration purposes. For production use, please implement a stronger encryption mechanism (e.g., Web Crypto API).
+                </Alert>
+
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={securityConfig.enableEncryption}
+                      onChange={(e) => setSecurityConfig(prev => ({ ...prev, enableEncryption: e.target.checked }))}
+                      sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--primary-color)' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: 'var(--primary-color)'} }}
+                    />
+                  }
+                  label="Enable local data encryption"
+                  sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 1, display: 'block' }}
                 />
-              )}
-              
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={securityConfig.requireReauth}
-                    onChange={(e) => setSecurityConfig(prev => ({ ...prev, requireReauth: e.target.checked }))}
-                  />
-                }
-                label="Require periodic re-authentication"
-                sx={{ color: 'rgba(255, 255, 255, 0.8)' }}
-              />
-              
-              {securityConfig.requireReauth && (
-                <TextField
-                  label="Re-auth interval (hours)"
-                  type="number"
-                  value={securityConfig.reauthIntervalHours}
-                  onChange={(e) => setSecurityConfig(prev => ({ ...prev, reauthIntervalHours: parseInt(e.target.value) || 24 }))}
-                  sx={{
-                    ml: 4,
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' }
-                    },
-                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                    '& .MuiInputBase-input': { color: 'white' }
-                  }}
+                
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={securityConfig.autoLogout}
+                      onChange={(e) => setSecurityConfig(prev => ({ ...prev, autoLogout: e.target.checked }))}
+                      sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--primary-color)' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: 'var(--primary-color)'} }}
+                    />
+                  }
+                  label="Auto logout after inactivity (experimental)"
+                  sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 1, display: 'block' }}
                 />
-              )}
-            </CardContent>
-          </Card>
+                
+                {securityConfig.autoLogout && (
+                  <TextField
+                    label="Logout after (minutes)"
+                    type="number"
+                    size="small"
+                    value={securityConfig.logoutAfterMinutes}
+                    onChange={(e) => setSecurityConfig(prev => ({ ...prev, logoutAfterMinutes: parseInt(e.target.value) || 30 }))}
+                    sx={{
+                      ml: 4,
+                      mb: 2,
+                      width: 'calc(100% - 32px)',
+                      '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
+                      '& .MuiInputBase-input': { color: 'white' },
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.07)',
+                        '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                        '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.4)' },
+                      }
+                    }}
+                  />
+                )}
+                
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={securityConfig.requireReauth}
+                      onChange={(e) => setSecurityConfig(prev => ({ ...prev, requireReauth: e.target.checked }))}
+                      sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--primary-color)' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: 'var(--primary-color)'} }}
+                    />
+                  }
+                  label="Require periodic re-authentication for integrations (experimental)"
+                  sx={{ color: 'rgba(255, 255, 255, 0.8)', display: 'block' }}
+                />
+                
+                {securityConfig.requireReauth && (
+                  <TextField
+                    label="Re-auth interval (hours)"
+                    type="number"
+                    size="small"
+                    value={securityConfig.reauthIntervalHours}
+                    onChange={(e) => setSecurityConfig(prev => ({ ...prev, reauthIntervalHours: parseInt(e.target.value) || 24 }))}
+                    sx={{
+                      ml: 4,
+                      mt: 1,
+                      width: 'calc(100% - 32px)',
+                      '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
+                      '& .MuiInputBase-input': { color: 'white' },
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.07)',
+                        '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                        '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.4)' },
+                      }
+                    }}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          </Box>
+
+          {/* Setup Guide Tab Panel */}
+          <Box role="tabpanel" hidden={settingsActiveTab !== 2} id="settings-tabpanel-2" aria-labelledby="settings-tab-2">
+            <Typography variant="h6" sx={{ color: 'white', mb: 2 }}>Google Calendar Setup Guide</Typography>
+            <Paper sx={{ p: 2, mb: 3, backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <List dense>
+                <ListItem><ListItemText primary="1. Go to Google Cloud Console (console.cloud.google.com)." /></ListItem>
+                <ListItem><ListItemText primary="2. Create a new project or select an existing one." /></ListItem>
+                <ListItem><ListItemText primary="3. In the navigation menu, go to 'APIs & Services' > 'Library'." /></ListItem>
+                <ListItem><ListItemText primary="4. Search for 'Google Calendar API' and enable it." /></ListItem>
+                <ListItem><ListItemText primary="5. Go to 'APIs & Services' > 'Credentials'." /></ListItem>
+                <ListItem><ListItemText primary="6. Click '+ CREATE CREDENTIALS' and select 'OAuth client ID'." /></ListItem>
+                <ListItem><ListItemText primary="7. If prompted, configure the 'OAuth consent screen':" secondaryTypographyProps={{ component: 'div' }} secondary={<List dense disablePadding sx={{pl:2}}>
+                  <ListItem sx={{py:0.2}}><ListItemText primary="• User Type: External (or Internal if applicable)." /></ListItem>
+                  <ListItem sx={{py:0.2}}><ListItemText primary="• Fill in App name, User support email, and Developer contact information." /></ListItem>
+                  <ListItem sx={{py:0.2}}><ListItemText primary="• Scopes: Add '.../auth/calendar.readonly'." /></ListItem>
+                  <ListItem sx={{py:0.2}}><ListItemText primary="• Add test users if your app is in testing phase." /></ListItem>
+                </List>} /></ListItem>
+                <ListItem><ListItemText primary="8. Choose 'Web application' as the Application type." /></ListItem>
+                <ListItem><ListItemText primary="9. Under 'Authorized JavaScript origins', add your app's URLs (e.g., http://localhost:3000, http://localhost:5173, your production URL)." /></ListItem>
+                <ListItem><ListItemText primaryTypographyProps={{component: 'div'}} primary="10. Under 'Authorized redirect URIs', add:" secondaryTypographyProps={{ component: 'div' }} secondary={
+                  <List dense disablePadding sx={{pl:2}}>
+                    <ListItem sx={{py:0.2}}><ListItemText primary={`• For Chrome Extension: ${chrome.identity && chrome.identity.getRedirectURL ? chrome.identity.getRedirectURL() : '(Displayed in Integrations tab when run as extension)'}`} /></ListItem>
+                    <ListItem sx={{py:0.2}}><ListItemText primary={`• For Web App: ${OAuth2Security.REDIRECT_URI} (or your custom callback path). Ensure your app handles this path.`} /></ListItem>
+                  </List>
+                } /></ListItem>
+                <ListItem><ListItemText primary="11. Click 'Create'. Copy the 'Client ID'." /></ListItem>
+                <ListItem><ListItemText primary="12. Create a .env file in your project's root directory if it doesn't exist." /></ListItem>
+                <ListItem><ListItemText primary={<span>13. Add the line <code>VITE_GOOGLE_CLIENT_ID=YOUR_COPIED_CLIENT_ID</code> to .env.</span>} /></ListItem>
+                <ListItem><ListItemText primary="14. Restart your development server (e.g., npm run dev)." /></ListItem>
+                <ListItem><ListItemText primary="15. Now you can use the 'Connect' button in the 'Integrations' tab." /></ListItem>
+              </List>
+            </Paper>
+
+            <Typography variant="h6" sx={{ color: 'white', mb: 2 }}>Telegram Bot Setup Guide</Typography>
+            <Paper sx={{ p: 2, backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <List dense>
+                <ListItem><ListItemText primary="1. Open Telegram and search for 'BotFather'. Start a chat with the verified BotFather." /></ListItem>
+                <ListItem><ListItemText primary="2. Send the /newbot command to BotFather." /></ListItem>
+                <ListItem><ListItemText primary="3. Follow the prompts to choose a display name and a unique username for your bot (usernames must end in 'bot', e.g., MyNotesBot)." /></ListItem>
+                <ListItem><ListItemText primary="4. BotFather will provide you with an API token. Copy this token carefully." /></ListItem>
+                <ListItem><ListItemText primary="5. Get your Chat ID:" secondaryTypographyProps={{ component: 'div' }} secondary={<List dense disablePadding sx={{pl:2}}>
+                  <ListItem sx={{py:0.2}}><ListItemText primary="• Option A: Search for a bot like '@userinfobot' or '@getidsbot' in Telegram. Start a chat, and it will reply with your User ID (this is your Chat ID)." /></ListItem>
+                  <ListItem sx={{py:0.2}}><ListItemText primary="• Option B: After creating your bot, send any message to your new bot. Then, open your web browser and go to: https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates (replace YOUR_BOT_TOKEN with your actual token). Look for a 'result' array, and inside it, find a 'message' object. The 'chat' object within 'message' will have an 'id'. This is your Chat ID." /></ListItem>
+                  </List>} /></ListItem>
+                <ListItem><ListItemText primary="6. Go to the 'Integrations' tab in this widget's settings." /></ListItem>
+                <ListItem><ListItemText primary="7. Enter the Bot API Token and your Chat ID into the respective fields and click 'Connect'." /></ListItem>
+              </List>
+            </Paper>
+          </Box>
+
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowSettingsDialog(false)} sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+          <Button 
+            onClick={() => {
+              setShowSettingsDialog(false);
+              // Reset temporary inputs if dialog is closed without saving new Telegram details
+              if (!authState.telegram.isAuthenticated) {
+                setTelegramBotTokenInput(authState.telegram.botToken || '');
+                setTelegramChatIdInput(authState.telegram.chatId || '');
+              }
+            }} 
+            sx={{ color: 'rgba(255, 255, 255, 0.7)', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)'} }}
+          >
             Close
           </Button>
         </DialogActions>
