@@ -326,12 +326,30 @@ const App = () => {
     };
   });
   
-  // Default wallpaper set here
+  // Wallpaper state management
+  const [customWallpapers, setCustomWallpapers] = useState<string[]>(() => {
+    const stored = localStorage.getItem('customWallpapers');
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  const [wallpaperShuffle, setWallpaperShuffle] = useState<boolean>(() => {
+    const stored = localStorage.getItem('wallpaperShuffle');
+    return stored ? JSON.parse(stored) : false;
+  });
+
   const [currentWallpaper, setCurrentWallpaper] = useState<string>(() => {
-    // Check for custom wallpaper first, then selected wallpaper, then default
-    const customWallpaper = localStorage.getItem('customWallpaper');
-    if (customWallpaper) {
-      return customWallpaper;
+    // Check for old single custom wallpaper first, then selected wallpaper, then default
+    const oldCustomWallpaper = localStorage.getItem('customWallpaper');
+    if (oldCustomWallpaper) {
+      // Migrate old custom wallpaper to new system
+      const existingCustomWallpapers = localStorage.getItem('customWallpapers');
+      const customWallpapers = existingCustomWallpapers ? JSON.parse(existingCustomWallpapers) : [];
+      if (!customWallpapers.includes(oldCustomWallpaper)) {
+        customWallpapers.push(oldCustomWallpaper);
+        localStorage.setItem('customWallpapers', JSON.stringify(customWallpapers));
+      }
+      localStorage.removeItem('customWallpaper'); // Remove old storage
+      return oldCustomWallpaper;
     }
     return localStorage.getItem('selectedWallpaper') || '/wallpapers/forest.jpg';
   });
@@ -542,6 +560,27 @@ const App = () => {
 
   }, []);
 
+  // Sync custom wallpapers from localStorage when component mounts
+  useEffect(() => {
+    const syncCustomWallpapers = () => {
+      const stored = localStorage.getItem('customWallpapers');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setCustomWallpapers(parsed);
+      }
+    };
+
+    // Listen for storage changes from other tabs/windows
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'customWallpapers') {
+        syncCustomWallpapers();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Save state changes to storage
   useEffect(() => {
     localStorage.setItem('widgetVisibility', JSON.stringify(widgetVisibility));
@@ -594,6 +633,59 @@ const App = () => {
   useEffect(() => {
     localStorage.setItem('openQuickLinksInNewTab', JSON.stringify(openQuickLinksInNewTab));
   }, [openQuickLinksInNewTab]);
+
+  // Persist wallpaper shuffle setting
+  useEffect(() => {
+    localStorage.setItem('wallpaperShuffle', JSON.stringify(wallpaperShuffle));
+  }, [wallpaperShuffle]);
+
+  // Persist custom wallpapers
+  useEffect(() => {
+    localStorage.setItem('customWallpapers', JSON.stringify(customWallpapers));
+  }, [customWallpapers]);
+
+  // Auto-change wallpaper every hour when shuffle is enabled
+  useEffect(() => {
+    if (!wallpaperShuffle) return;
+
+    const getAllWallpapers = () => {
+      const defaultWallpapers = [
+        '/wallpapers/default.jpg',
+        '/wallpapers/forest.jpg',
+        '/wallpapers/mountains.jpg',
+        '/wallpapers/ocean.jpg',
+        '/wallpapers/night.jpg',
+        '/wallpapers/nature.jpg',
+        '/wallpapers/anime.jpeg',
+        '/wallpapers/tea.jpg',
+        '/wallpapers/shiraz1.jpg',
+      ];
+      return [...defaultWallpapers, ...customWallpapers];
+    };
+
+    const shuffleWallpaper = () => {
+      const allWallpapers = getAllWallpapers();
+      if (allWallpapers.length <= 1) return;
+      
+      // Get a random wallpaper that's different from the current one
+      let newWallpaper;
+      do {
+        newWallpaper = allWallpapers[Math.floor(Math.random() * allWallpapers.length)];
+      } while (newWallpaper === currentWallpaper && allWallpapers.length > 1);
+      
+      setCurrentWallpaper(newWallpaper);
+      
+      // Save to localStorage if it's not a custom wallpaper
+      if (!newWallpaper.startsWith('data:image/')) {
+        localStorage.setItem('selectedWallpaper', newWallpaper);
+      }
+    };
+
+    // Set interval for 1 hour (3600000 ms)
+    const interval = setInterval(shuffleWallpaper, 3600000);
+
+    return () => clearInterval(interval);
+  }, [wallpaperShuffle, customWallpapers, currentWallpaper]);
 
   // Calculate optimal widget layout based on column count
   const generateOptimalLayout = useCallback(() => {
@@ -929,6 +1021,44 @@ const App = () => {
   const toggleColumnControls = () => {
     setShowColumnControls(!showColumnControls);
   };
+
+  // Wallpaper handlers
+  const handleWallpaperShuffleChange = useCallback((enabled: boolean) => {
+    setWallpaperShuffle(enabled);
+    if (enabled) {
+      setSnackbarMessage('Auto wallpaper change enabled - changes every hour');
+    } else {
+      setSnackbarMessage('Auto wallpaper change disabled');
+    }
+    setSnackbarOpen(true);
+  }, []);
+
+  const handleDeleteCustomWallpaper = useCallback((wallpaperToDelete: string) => {
+    setCustomWallpapers(prev => {
+      const updated = prev.filter(w => w !== wallpaperToDelete);
+      
+      // If the deleted wallpaper was the current one, switch to default
+      if (currentWallpaper === wallpaperToDelete) {
+        setCurrentWallpaper('/wallpapers/default.jpg');
+        localStorage.setItem('selectedWallpaper', '/wallpapers/default.jpg');
+      }
+      
+      return updated;
+    });
+    
+    setSnackbarMessage('Custom wallpaper deleted');
+    setSnackbarOpen(true);
+  }, [currentWallpaper]);
+
+  const handleAddCustomWallpaper = useCallback((wallpaper: string) => {
+    setCustomWallpapers(prev => {
+      const updated = [...prev, wallpaper];
+      return updated;
+    });
+    
+    setSnackbarMessage('Custom wallpaper added');
+    setSnackbarOpen(true);
+  }, []);
 
   // --- Render Logic ---
   const renderWidget = (widgetId: string) => {
@@ -1284,6 +1414,11 @@ const App = () => {
         onUserNameChange={handleUserNameChange}
         openQuickLinksInNewTab={openQuickLinksInNewTab}
         setOpenQuickLinksInNewTab={setOpenQuickLinksInNewTab}
+        wallpaperShuffle={wallpaperShuffle}
+        onWallpaperShuffleChange={handleWallpaperShuffleChange}
+        customWallpapers={customWallpapers}
+        onDeleteCustomWallpaper={handleDeleteCustomWallpaper}
+        onAddCustomWallpaper={handleAddCustomWallpaper}
       />
 
       <AddQuickLinkForm

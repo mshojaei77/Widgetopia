@@ -22,7 +22,7 @@ All widgets are fully customizable and can be arranged, resized, and toggled on/
 
 ### 🎨 Customization Features
 
-- **Custom Wallpapers** - Upload your own images as backgrounds (up to 5MB)
+- **Custom Wallpapers** - Upload your own images as backgrounds (no size limit)
 - **Predefined Wallpapers** - Choose from beautiful built-in wallpaper options
 - **Drag & Drop Layout** - Arrange widgets exactly where you want them
 - **Resizable Widgets** - Adjust widget sizes to fit your needs

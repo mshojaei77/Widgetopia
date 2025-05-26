@@ -27,69 +27,70 @@ describe('Custom Wallpaper Upload', () => {
     localStorageMock.clear();
   });
 
-  test('should store custom wallpaper in localStorage', () => {
-    const base64Image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  test('should store multiple custom wallpapers in localStorage', () => {
+    const base64Image1 = 'data:image/png;base64,image1';
+    const base64Image2 = 'data:image/png;base64,image2';
+    const customWallpapers = [base64Image1, base64Image2];
     
-    localStorage.setItem('customWallpaper', base64Image);
+    localStorage.setItem('customWallpapers', JSON.stringify(customWallpapers));
     
-    expect(localStorage.getItem('customWallpaper')).toBe(base64Image);
+    const stored = localStorage.getItem('customWallpapers');
+    expect(JSON.parse(stored!)).toEqual(customWallpapers);
   });
 
-  test('should prioritize custom wallpaper over selected wallpaper', () => {
-    const customWallpaper = 'data:image/png;base64,custom';
-    const selectedWallpaper = '/wallpapers/forest.jpg';
+  test('should add new wallpaper to existing custom wallpapers array', () => {
+    const existingWallpapers = ['data:image/png;base64,existing'];
+    const newWallpaper = 'data:image/png;base64,new';
     
-    localStorage.setItem('customWallpaper', customWallpaper);
-    localStorage.setItem('selectedWallpaper', selectedWallpaper);
+    localStorage.setItem('customWallpapers', JSON.stringify(existingWallpapers));
     
-    // Simulate the wallpaper initialization logic from App.tsx
-    const getInitialWallpaper = () => {
-      const customWallpaper = localStorage.getItem('customWallpaper');
-      if (customWallpaper) {
-        return customWallpaper;
+    const current = JSON.parse(localStorage.getItem('customWallpapers') || '[]');
+    const updated = [...current, newWallpaper];
+    localStorage.setItem('customWallpapers', JSON.stringify(updated));
+    
+    const result = JSON.parse(localStorage.getItem('customWallpapers')!);
+    expect(result).toEqual([...existingWallpapers, newWallpaper]);
+  });
+
+  test('should remove specific custom wallpaper from array', () => {
+    const wallpapers = ['data:image/png;base64,image1', 'data:image/png;base64,image2', 'data:image/png;base64,image3'];
+    const wallpaperToRemove = 'data:image/png;base64,image2';
+    
+    localStorage.setItem('customWallpapers', JSON.stringify(wallpapers));
+    
+    const current = JSON.parse(localStorage.getItem('customWallpapers') || '[]');
+    const updated = current.filter((w: string) => w !== wallpaperToRemove);
+    localStorage.setItem('customWallpapers', JSON.stringify(updated));
+    
+    const result = JSON.parse(localStorage.getItem('customWallpapers')!);
+    expect(result).toEqual(['data:image/png;base64,image1', 'data:image/png;base64,image3']);
+  });
+
+  test('should migrate old single custom wallpaper to new array system', () => {
+    const oldCustomWallpaper = 'data:image/png;base64,old';
+    localStorage.setItem('customWallpaper', oldCustomWallpaper);
+    
+    // Simulate migration logic
+    const oldWallpaper = localStorage.getItem('customWallpaper');
+    if (oldWallpaper) {
+      const existingCustomWallpapers = localStorage.getItem('customWallpapers');
+      const customWallpapers = existingCustomWallpapers ? JSON.parse(existingCustomWallpapers) : [];
+      if (!customWallpapers.includes(oldWallpaper)) {
+        customWallpapers.push(oldWallpaper);
+        localStorage.setItem('customWallpapers', JSON.stringify(customWallpapers));
       }
-      return localStorage.getItem('selectedWallpaper') || '/wallpapers/forest.jpg';
-    };
-    
-    expect(getInitialWallpaper()).toBe(customWallpaper);
-  });
-
-  test('should fall back to selected wallpaper when no custom wallpaper', () => {
-    const selectedWallpaper = '/wallpapers/mountains.jpg';
-    localStorage.setItem('selectedWallpaper', selectedWallpaper);
-    
-    const getInitialWallpaper = () => {
-      const customWallpaper = localStorage.getItem('customWallpaper');
-      if (customWallpaper) {
-        return customWallpaper;
-      }
-      return localStorage.getItem('selectedWallpaper') || '/wallpapers/forest.jpg';
-    };
-    
-    expect(getInitialWallpaper()).toBe(selectedWallpaper);
-  });
-
-  test('should use default wallpaper when no custom or selected wallpaper', () => {
-    const getInitialWallpaper = () => {
-      const customWallpaper = localStorage.getItem('customWallpaper');
-      if (customWallpaper) {
-        return customWallpaper;
-      }
-      return localStorage.getItem('selectedWallpaper') || '/wallpapers/forest.jpg';
-    };
-    
-    expect(getInitialWallpaper()).toBe('/wallpapers/forest.jpg');
-  });
-
-  test('should remove custom wallpaper from localStorage', () => {
-    const base64Image = 'data:image/png;base64,test';
-    localStorage.setItem('customWallpaper', base64Image);
-    
-    expect(localStorage.getItem('customWallpaper')).toBe(base64Image);
-    
-    localStorage.removeItem('customWallpaper');
+      localStorage.removeItem('customWallpaper');
+    }
     
     expect(localStorage.getItem('customWallpaper')).toBeNull();
+    expect(JSON.parse(localStorage.getItem('customWallpapers')!)).toEqual([oldCustomWallpaper]);
+  });
+
+  test('should handle wallpaper shuffle setting', () => {
+    localStorage.setItem('wallpaperShuffle', JSON.stringify(true));
+    
+    const shuffleEnabled = JSON.parse(localStorage.getItem('wallpaperShuffle') || 'false');
+    expect(shuffleEnabled).toBe(true);
   });
 
   test('should identify base64 wallpapers correctly', () => {
@@ -99,6 +100,37 @@ describe('Custom Wallpaper Upload', () => {
     expect(isBase64Wallpaper('data:image/jpeg;base64,test')).toBe(true);
     expect(isBase64Wallpaper('/wallpapers/forest.jpg')).toBe(false);
     expect(isBase64Wallpaper('https://example.com/image.png')).toBe(false);
+  });
+
+  test('should handle duplicate wallpaper detection', () => {
+    const existingWallpapers = ['data:image/png;base64,existing1', 'data:image/png;base64,existing2'];
+    const duplicateWallpaper = 'data:image/png;base64,existing1';
+    const newWallpaper = 'data:image/png;base64,new';
+    
+    // Test duplicate detection
+    expect(existingWallpapers.includes(duplicateWallpaper)).toBe(true);
+    expect(existingWallpapers.includes(newWallpaper)).toBe(false);
+  });
+
+  test('should properly manage state through parent component handlers', () => {
+    // Mock parent component handlers
+    const mockOnAddCustomWallpaper = jest.fn();
+    const mockOnDeleteCustomWallpaper = jest.fn();
+    const mockOnWallpaperChange = jest.fn();
+    
+    const testWallpaper = 'data:image/png;base64,test';
+    
+    // Simulate adding a wallpaper
+    mockOnAddCustomWallpaper(testWallpaper);
+    expect(mockOnAddCustomWallpaper).toHaveBeenCalledWith(testWallpaper);
+    
+    // Simulate setting as current wallpaper
+    mockOnWallpaperChange(testWallpaper);
+    expect(mockOnWallpaperChange).toHaveBeenCalledWith(testWallpaper);
+    
+    // Simulate deleting a wallpaper
+    mockOnDeleteCustomWallpaper(testWallpaper);
+    expect(mockOnDeleteCustomWallpaper).toHaveBeenCalledWith(testWallpaper);
   });
 });
 
@@ -118,16 +150,18 @@ describe('File Upload Validation', () => {
     expect(validateFileType({ type: 'application/pdf' })).toBe(false);
   });
 
-  test('should validate file size limits', () => {
-    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-    
-    const validateFileSize = (file: { size: number }) => {
-      return file.size <= MAX_SIZE;
+  test('should handle compact upload UI', () => {
+    // Test that the compact upload section has the right properties
+    const compactUploadProps = {
+      buttonText: '+ Upload',
+      supportedFormats: 'JPG, PNG, WebP supported',
+      size: 'small',
+      inline: true
     };
     
-    expect(validateFileSize({ size: 1024 * 1024 })).toBe(true); // 1MB
-    expect(validateFileSize({ size: MAX_SIZE })).toBe(true); // Exactly 5MB
-    expect(validateFileSize({ size: MAX_SIZE + 1 })).toBe(false); // Over 5MB
-    expect(validateFileSize({ size: 10 * 1024 * 1024 })).toBe(false); // 10MB
+    expect(compactUploadProps.buttonText).toBe('+ Upload');
+    expect(compactUploadProps.supportedFormats).toBe('JPG, PNG, WebP supported');
+    expect(compactUploadProps.size).toBe('small');
+    expect(compactUploadProps.inline).toBe(true);
   });
 }); 

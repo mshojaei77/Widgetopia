@@ -21,6 +21,11 @@ interface SettingsModalProps {
   onUserNameChange: (name: string) => void;
   openQuickLinksInNewTab: boolean;
   setOpenQuickLinksInNewTab: (val: boolean) => void;
+  wallpaperShuffle: boolean;
+  onWallpaperShuffleChange: (enabled: boolean) => void;
+  customWallpapers: string[];
+  onDeleteCustomWallpaper: (wallpaper: string) => void;
+  onAddCustomWallpaper: (wallpaper: string) => void;
 }
 
 interface TabPanelProps {
@@ -32,10 +37,14 @@ interface TabPanelProps {
 // Available wallpapers (these will be stored in public/wallpapers)
 const WALLPAPERS = [
   { id: 'default', name: 'Default', path: '/wallpapers/default.jpg' },
+  { id: 'forest', name: 'Forest', path: '/wallpapers/forest.jpg' },
   { id: 'mountains', name: 'Mountains', path: '/wallpapers/mountains.jpg' },
   { id: 'ocean', name: 'Ocean', path: '/wallpapers/ocean.jpg' },
-  { id: 'forest', name: 'Forest', path: '/wallpapers/forest.jpg' },
   { id: 'night', name: 'Night Sky', path: '/wallpapers/night.jpg' },
+  { id: 'nature', name: 'Nature', path: '/wallpapers/nature.jpg' },
+  { id: 'anime', name: 'Anime', path: '/wallpapers/anime.jpeg' },
+  { id: 'tea', name: 'Tea', path: '/wallpapers/tea.jpg' },
+  { id: 'shiraz1', name: 'Shiraz', path: '/wallpapers/shiraz1.jpg' },
 ];
 
 function TabPanel(props: TabPanelProps) {
@@ -72,14 +81,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onUserNameChange,
   openQuickLinksInNewTab,
   setOpenQuickLinksInNewTab,
+  wallpaperShuffle,
+  onWallpaperShuffleChange,
+  customWallpapers,
+  onDeleteCustomWallpaper,
+  onAddCustomWallpaper,
 }) => {
   const [tabValue, setTabValue] = useState(0);
   const [userName, setUserName] = useState(initialUserName);
   const [locationInput, setLocationInput] = useState(currentLocation);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [customWallpaper, setCustomWallpaper] = useState<string | null>(() => {
-    return localStorage.getItem('customWallpaper');
-  });
   const [uploadingWallpaper, setUploadingWallpaper] = useState(false);
 
   useEffect(() => {
@@ -116,7 +127,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleConfirmReset = () => {
     localStorage.clear();
-    setCustomWallpaper(null); // Clear custom wallpaper state
     setShowResetConfirm(false);
     window.location.reload(); // Reload to apply cleared settings
   };
@@ -135,21 +145,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       return;
     }
 
-    // Check file size (limit to 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image size should be less than 5MB');
-      return;
-    }
-
     setUploadingWallpaper(true);
 
     const reader = new FileReader();
     reader.onload = (e) => {
       const base64String = e.target?.result as string;
-      setCustomWallpaper(base64String);
-      localStorage.setItem('customWallpaper', base64String);
+      
+      // Check if this wallpaper already exists
+      if (customWallpapers.includes(base64String)) {
+        alert('This wallpaper has already been uploaded');
+        setUploadingWallpaper(false);
+        return;
+      }
+      
+      // Add to custom wallpapers array via parent component
+      onAddCustomWallpaper(base64String);
+      
+      // Set as current wallpaper
       onWallpaperChange(base64String);
       setUploadingWallpaper(false);
+      
+      // Reset file input
+      event.target.value = '';
     };
 
     reader.onerror = () => {
@@ -160,12 +177,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleRemoveCustomWallpaper = () => {
-    setCustomWallpaper(null);
-    localStorage.removeItem('customWallpaper');
-    // Set to default wallpaper
-    onWallpaperChange('/wallpapers/default.jpg');
-  };
+
 
   // Animation variants
   const modalVariants = {
@@ -434,6 +446,39 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         When enabled, quick links open in a new browser tab. Otherwise, they open in the same tab.
                       </Typography>
                     </Box>
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="body2" gutterBottom sx={{ color: 'rgba(255, 255, 255, 0.8)', fontWeight: 500, mb: 1, textAlign: 'left' }}>
+                        Auto-Change Wallpaper
+                      </Typography>
+                      <Switch
+                        checked={wallpaperShuffle}
+                        onChange={e => onWallpaperShuffleChange(e.target.checked)}
+                        color="primary"
+                        inputProps={{ 'aria-label': 'Auto-Change Wallpaper' }}
+                        sx={{
+                          '& .MuiSwitch-switchBase': {
+                            color: 'rgba(255, 255, 255, 0.5)',
+                            '&.Mui-checked': {
+                              color: 'var(--primary-color)',
+                            },
+                            '&.Mui-checked + .MuiSwitch-track': {
+                              backgroundColor: 'var(--primary-color)',
+                              opacity: 0.5
+                            },
+                          },
+                          '& .MuiSwitch-thumb': {
+                            boxShadow: '0 2px 4px 0 rgba(0,0,0,0.2)'
+                          },
+                          '& .MuiSwitch-track': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            opacity: 1
+                          }
+                        }}
+                      />
+                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', ml: 1 }}>
+                        Automatically shuffle through all wallpapers every hour.
+                      </Typography>
+                    </Box>
                     
                     {/* Reset Application Settings Section */}
                     <Box sx={{ mt: 4, mb: 2 }}>
@@ -618,95 +663,47 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       Select Wallpaper
                     </Typography>
 
-                    {/* Custom Wallpaper Upload Section */}
-                    <Box sx={{ mb: 3, p: 2, borderRadius: '8px', backgroundColor: 'rgba(30, 30, 40, 0.5)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                      <Typography variant="body2" gutterBottom sx={{ 
-                        color: 'rgba(255, 255, 255, 0.8)',
-                        fontWeight: 500,
-                        mb: 2,
-                        textAlign: 'left'
-                      }}>
-                        Upload Custom Wallpaper
-                      </Typography>
+                    {/* Custom Wallpaper Upload Section - Compact */}
+                    <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <input
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        id="wallpaper-upload"
+                        type="file"
+                        onChange={handleCustomWallpaperUpload}
+                      />
+                      <label htmlFor="wallpaper-upload">
+                        <Button
+                          variant="outlined"
+                          component="span"
+                          disabled={uploadingWallpaper}
+                          size="small"
+                          sx={{
+                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                            color: 'white',
+                            fontSize: '0.8rem',
+                            '&:hover': {
+                              borderColor: 'var(--primary-color)',
+                              backgroundColor: 'rgba(138, 180, 248, 0.1)'
+                            },
+                            '&.Mui-disabled': {
+                              borderColor: 'rgba(255, 255, 255, 0.1)',
+                              color: 'rgba(255, 255, 255, 0.3)'
+                            }
+                          }}
+                        >
+                          {uploadingWallpaper ? 'Uploading...' : '+ Upload'}
+                        </Button>
+                      </label>
                       
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <input
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          id="wallpaper-upload"
-                          type="file"
-                          onChange={handleCustomWallpaperUpload}
-                        />
-                        <label htmlFor="wallpaper-upload">
-                          <Button
-                            variant="outlined"
-                            component="span"
-                            disabled={uploadingWallpaper}
-                            sx={{
-                              width: '100%',
-                              borderColor: 'rgba(255, 255, 255, 0.3)',
-                              color: 'white',
-                              '&:hover': {
-                                borderColor: 'var(--primary-color)',
-                                backgroundColor: 'rgba(138, 180, 248, 0.1)'
-                              },
-                              '&.Mui-disabled': {
-                                borderColor: 'rgba(255, 255, 255, 0.1)',
-                                color: 'rgba(255, 255, 255, 0.3)'
-                              }
-                            }}
-                          >
-                            {uploadingWallpaper ? 'Uploading...' : 'Choose Image'}
-                          </Button>
-                        </label>
-                        
-                        {customWallpaper && (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Box
-                              sx={{
-                                width: 60,
-                                height: 40,
-                                backgroundImage: `url(${customWallpaper})`,
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                                borderRadius: '4px',
-                                border: currentWallpaper === customWallpaper 
-                                  ? '2px solid var(--primary-color)' 
-                                  : '1px solid rgba(255, 255, 255, 0.2)',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s ease',
-                                '&:hover': {
-                                  opacity: 0.8
-                                }
-                              }}
-                              onClick={() => onWallpaperChange(customWallpaper)}
-                            />
-                            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', flex: 1 }}>
-                              Custom wallpaper
-                            </Typography>
-                            <Button
-                              size="small"
-                              color="error"
-                              onClick={handleRemoveCustomWallpaper}
-                              sx={{ 
-                                minWidth: 'auto',
-                                color: 'rgba(255, 100, 100, 0.9)',
-                                '&:hover': {
-                                  backgroundColor: 'rgba(211, 47, 47, 0.1)'
-                                }
-                              }}
-                            >
-                              Remove
-                            </Button>
-                          </Box>
-                        )}
-                        
-                        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                          Supported formats: JPG, PNG, WebP. Max size: 5MB
-                        </Typography>
-                      </Box>
+                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem' }}>
+                        JPG, PNG, WebP supported
+                      </Typography>
                     </Box>
+
+                    {/* All Wallpapers Grid */}
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 2 }}>
+                      {/* Default Wallpapers */}
                       {WALLPAPERS.map((wallpaper, i) => (
                         <Box 
                           key={wallpaper.id} 
@@ -757,6 +754,89 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                               }}
                             >
                               {wallpaper.name}
+                            </Typography>
+                          </motion.div>
+                        </Box>
+                      ))}
+
+                      {/* Custom Wallpapers */}
+                      {customWallpapers.map((customWallpaper, i) => (
+                        <Box 
+                          key={`custom-${i}`} 
+                          sx={{ 
+                            gridColumn: { xs: 'span 6', sm: 'span 4', md: 'span 4' } 
+                          }}
+                        >
+                          <motion.div
+                            custom={WALLPAPERS.length + i}
+                            variants={wallpaperItemVariants}
+                            initial="initial"
+                            animate="animate"
+                            whileHover="hover"
+                          >
+                            <Box sx={{ position: 'relative' }}>
+                              <Box
+                                onClick={() => onWallpaperChange(customWallpaper)}
+                                sx={{
+                                  height: 100,
+                                  width: 100,
+                                  backgroundImage: `url(${customWallpaper})`,
+                                  backgroundSize: 'cover',
+                                  backgroundPosition: 'center',
+                                  borderRadius: '12px',
+                                  cursor: 'pointer',
+                                  border: currentWallpaper === customWallpaper 
+                                    ? '2px solid var(--primary-color)' 
+                                    : '2px solid transparent',
+                                  transition: 'all 0.3s ease',
+                                  boxShadow: currentWallpaper === customWallpaper 
+                                    ? '0 0 15px rgba(138, 180, 248, 0.5)' 
+                                    : '0 5px 15px rgba(0, 0, 0, 0.2)',
+                                  '&:hover': {
+                                    opacity: 0.9,
+                                    transform: 'scale(1.03)',
+                                  }
+                                }}
+                              />
+                              {/* Delete button for custom wallpapers */}
+                              <IconButton
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeleteCustomWallpaper(customWallpaper);
+                                }}
+                                sx={{
+                                  position: 'absolute',
+                                  top: -8,
+                                  right: -8,
+                                  width: 24,
+                                  height: 24,
+                                  backgroundColor: 'rgba(211, 47, 47, 0.9)',
+                                  color: 'white',
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(211, 47, 47, 1)',
+                                    transform: 'scale(1.1)'
+                                  },
+                                  '& .MuiSvgIcon-root': {
+                                    fontSize: '16px'
+                                  }
+                                }}
+                              >
+                                <CloseIcon />
+                              </IconButton>
+                            </Box>
+                            <Typography 
+                              variant="caption" 
+                              display="block" 
+                              align="center" 
+                              sx={{ 
+                                mt: 1,
+                                fontWeight: currentWallpaper === customWallpaper ? 600 : 400,
+                                color: currentWallpaper === customWallpaper ? 'var(--primary-color)' : 'inherit',
+                                transition: 'all 0.3s ease',
+                                textShadow: currentWallpaper === customWallpaper ? '0 0 5px rgba(138, 180, 248, 0.5)' : 'none'
+                              }}
+                            >
+                              Custom {i + 1}
                             </Typography>
                           </motion.div>
                         </Box>
