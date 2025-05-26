@@ -77,6 +77,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [userName, setUserName] = useState(initialUserName);
   const [locationInput, setLocationInput] = useState(currentLocation);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [customWallpaper, setCustomWallpaper] = useState<string | null>(() => {
+    return localStorage.getItem('customWallpaper');
+  });
+  const [uploadingWallpaper, setUploadingWallpaper] = useState(false);
 
   useEffect(() => {
     setUserName(initialUserName);
@@ -112,12 +116,55 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleConfirmReset = () => {
     localStorage.clear();
+    setCustomWallpaper(null); // Clear custom wallpaper state
     setShowResetConfirm(false);
     window.location.reload(); // Reload to apply cleared settings
   };
 
   const handleCancelReset = () => {
     setShowResetConfirm(false);
+  };
+
+  const handleCustomWallpaperUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Check file size (limit to 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size should be less than 5MB');
+      return;
+    }
+
+    setUploadingWallpaper(true);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64String = e.target?.result as string;
+      setCustomWallpaper(base64String);
+      localStorage.setItem('customWallpaper', base64String);
+      onWallpaperChange(base64String);
+      setUploadingWallpaper(false);
+    };
+
+    reader.onerror = () => {
+      alert('Error reading file');
+      setUploadingWallpaper(false);
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveCustomWallpaper = () => {
+    setCustomWallpaper(null);
+    localStorage.removeItem('customWallpaper');
+    // Set to default wallpaper
+    onWallpaperChange('/wallpapers/default.jpg');
   };
 
   // Animation variants
@@ -570,6 +617,95 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     }}>
                       Select Wallpaper
                     </Typography>
+
+                    {/* Custom Wallpaper Upload Section */}
+                    <Box sx={{ mb: 3, p: 2, borderRadius: '8px', backgroundColor: 'rgba(30, 30, 40, 0.5)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                      <Typography variant="body2" gutterBottom sx={{ 
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        fontWeight: 500,
+                        mb: 2,
+                        textAlign: 'left'
+                      }}>
+                        Upload Custom Wallpaper
+                      </Typography>
+                      
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <input
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          id="wallpaper-upload"
+                          type="file"
+                          onChange={handleCustomWallpaperUpload}
+                        />
+                        <label htmlFor="wallpaper-upload">
+                          <Button
+                            variant="outlined"
+                            component="span"
+                            disabled={uploadingWallpaper}
+                            sx={{
+                              width: '100%',
+                              borderColor: 'rgba(255, 255, 255, 0.3)',
+                              color: 'white',
+                              '&:hover': {
+                                borderColor: 'var(--primary-color)',
+                                backgroundColor: 'rgba(138, 180, 248, 0.1)'
+                              },
+                              '&.Mui-disabled': {
+                                borderColor: 'rgba(255, 255, 255, 0.1)',
+                                color: 'rgba(255, 255, 255, 0.3)'
+                              }
+                            }}
+                          >
+                            {uploadingWallpaper ? 'Uploading...' : 'Choose Image'}
+                          </Button>
+                        </label>
+                        
+                        {customWallpaper && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Box
+                              sx={{
+                                width: 60,
+                                height: 40,
+                                backgroundImage: `url(${customWallpaper})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                borderRadius: '4px',
+                                border: currentWallpaper === customWallpaper 
+                                  ? '2px solid var(--primary-color)' 
+                                  : '1px solid rgba(255, 255, 255, 0.2)',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                  opacity: 0.8
+                                }
+                              }}
+                              onClick={() => onWallpaperChange(customWallpaper)}
+                            />
+                            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', flex: 1 }}>
+                              Custom wallpaper
+                            </Typography>
+                            <Button
+                              size="small"
+                              color="error"
+                              onClick={handleRemoveCustomWallpaper}
+                              sx={{ 
+                                minWidth: 'auto',
+                                color: 'rgba(255, 100, 100, 0.9)',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(211, 47, 47, 0.1)'
+                                }
+                              }}
+                            >
+                              Remove
+                            </Button>
+                          </Box>
+                        )}
+                        
+                        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                          Supported formats: JPG, PNG, WebP. Max size: 5MB
+                        </Typography>
+                      </Box>
+                    </Box>
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 2 }}>
                       {WALLPAPERS.map((wallpaper, i) => (
                         <Box 

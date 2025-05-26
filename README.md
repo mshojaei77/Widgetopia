@@ -20,6 +20,14 @@ Widgetopia includes the following widgets:
 
 All widgets are fully customizable and can be arranged, resized, and toggled on/off according to your preferences.
 
+### 🎨 Customization Features
+
+- **Custom Wallpapers** - Upload your own images as backgrounds (up to 5MB)
+- **Predefined Wallpapers** - Choose from beautiful built-in wallpaper options
+- **Drag & Drop Layout** - Arrange widgets exactly where you want them
+- **Resizable Widgets** - Adjust widget sizes to fit your needs
+- **Personalization** - Set your name and location for personalized greetings and weather
+
 ## How to Install (Easy Method)
 
 1.  **Download the latest version:**

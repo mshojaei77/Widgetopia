@@ -292,6 +292,11 @@ const App = () => {
   
   // Default wallpaper set here
   const [currentWallpaper, setCurrentWallpaper] = useState<string>(() => {
+    // Check for custom wallpaper first, then selected wallpaper, then default
+    const customWallpaper = localStorage.getItem('customWallpaper');
+    if (customWallpaper) {
+      return customWallpaper;
+    }
     return localStorage.getItem('selectedWallpaper') || '/wallpapers/forest.jpg';
   });
   const [userName, setUserName] = useState<string>(() => {
@@ -508,7 +513,10 @@ const App = () => {
   }, [widgetVisibility]);
 
   useEffect(() => {
-    localStorage.setItem('selectedWallpaper', currentWallpaper);
+    // Only save to selectedWallpaper if it's not a custom base64 wallpaper
+    if (!currentWallpaper.startsWith('data:image/')) {
+      localStorage.setItem('selectedWallpaper', currentWallpaper);
+    }
     document.body.style.backgroundImage = `url(${currentWallpaper})`;
   }, [currentWallpaper]);
 
@@ -630,6 +638,10 @@ const App = () => {
 
   const handleWallpaperChange = useCallback((wallpaperPath: string) => {
     setCurrentWallpaper(wallpaperPath);
+    // If it's a custom wallpaper (base64), don't save to selectedWallpaper
+    if (!wallpaperPath.startsWith('data:image/')) {
+      localStorage.setItem('selectedWallpaper', wallpaperPath);
+    }
   }, []);
 
   const handleUserNameChange = useCallback((newName: string) => {
