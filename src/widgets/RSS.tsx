@@ -364,9 +364,17 @@ const RSS: React.FC = () => {
           <IconButton size="small" onClick={() => setIsAddDialogOpen(true)} title="Manage & Add Feeds">
             <AddIcon />
           </IconButton>
-          <IconButton size="small" onClick={handleRefresh} disabled={loading || !activeFeed} title="Refresh Feed">
-            <RefreshIcon />
-          </IconButton>
+          {loading || !activeFeed ? (
+            <span title="Refresh Feed">
+              <IconButton size="small" disabled sx={{ pointerEvents: 'none' }}>
+                <RefreshIcon />
+              </IconButton>
+            </span>
+          ) : (
+            <IconButton size="small" onClick={handleRefresh} title="Refresh Feed">
+              <RefreshIcon />
+            </IconButton>
+          )}
         </Box>
       </Box>
 
@@ -529,16 +537,29 @@ const RSS: React.FC = () => {
                   <ListItem
                     key={feed.id}
                     secondaryAction={
-                      <IconButton
-                        edge="end"
-                        aria-label="delete"
-                        onClick={() => handleDeleteFeed(feed.id)}
-                        size="small"
-                        disabled={feeds.length <= 1} // Disable delete if only one feed left
-                        title={feeds.length <= 1 ? "Cannot delete the last feed" : "Delete feed"}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      feeds.length <= 1 ? (
+                        <span title="Cannot delete the last feed">
+                          <IconButton
+                            edge="end"
+                            aria-label="delete"
+                            size="small"
+                            disabled
+                            sx={{ pointerEvents: 'none' }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      ) : (
+                        <IconButton
+                          edge="end"
+                          aria-label="delete"
+                          onClick={() => handleDeleteFeed(feed.id)}
+                          size="small"
+                          title="Delete feed"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )
                     }
                     sx={{ pr: 5 }} // Add padding to prevent overlap with delete icon
                   >

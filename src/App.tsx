@@ -36,6 +36,43 @@ import NotesReminders from './widgets/NotesReminders'; // Import the NotesRemind
 
 // import './App.css'; // Removed as file doesn't exist
 
+// Add logging utility function after imports and before WidgetWrapper
+const logWidgetLayouts = (layouts: Record<string, WidgetLayout>, context: string = 'Layout Change') => {
+  console.group(`🔧 ${context} - Widget Layout Log`);
+  console.log(`📅 Timestamp: ${new Date().toLocaleString()}`);
+  console.log(`📊 Total Widgets: ${Object.keys(layouts).length}`);
+  console.log('─'.repeat(80));
+  
+  // Sort widgets by position (y first, then x) for better readability
+  const sortedWidgets = Object.entries(layouts).sort(([, a], [, b]) => {
+    if (a.y !== b.y) return a.y - b.y;
+    return a.x - b.x;
+  });
+  
+  sortedWidgets.forEach(([widgetId, layout]) => {
+    const { x, y, w, h } = layout;
+    console.log(`📦 ${widgetId.toUpperCase()}:`);
+    console.log(`   📍 Position: (${x}, ${y})`);
+    console.log(`   📏 Size: ${w} × ${h} (width × height)`);
+    console.log(`   🎯 Grid Area: x:${x}-${x + w}, y:${y}-${y + h}`);
+    console.log(`   📐 Total Grid Units: ${w * h}`);
+    console.log('');
+  });
+  
+  // Calculate grid statistics
+  const maxX = Math.max(...sortedWidgets.map(([, layout]) => layout.x + layout.w));
+  const maxY = Math.max(...sortedWidgets.map(([, layout]) => layout.y + layout.h));
+  const totalGridUnits = sortedWidgets.reduce((sum, [, layout]) => sum + (layout.w * layout.h), 0);
+  
+  console.log('📈 Grid Statistics:');
+  console.log(`   🔢 Grid Width Used: ${maxX} columns`);
+  console.log(`   📏 Grid Height Used: ${maxY} rows`);
+  console.log(`   🎯 Total Grid Units Used: ${totalGridUnits}`);
+  console.log(`   📊 Average Widget Size: ${(totalGridUnits / Object.keys(layouts).length).toFixed(1)} units`);
+  
+  console.groupEnd();
+};
+
 // Define WidgetWrapper outside the App component for stability
 interface WidgetWrapperProps {
   widget: { id: string; name: string; component: React.ComponentType<any> };
@@ -328,9 +365,9 @@ const App = () => {
     if (storedVisibility) {
       return JSON.parse(storedVisibility);
     }
-    // Default visibility to exactly match the screenshot
+    // Default visibility based on the logged layout (all 11 widgets visible)
     return {
-      clock: false, // Clock is turned off in the settings modal
+      clock: true, // Clock is visible in the logged layout
       weather: true,
       todo: true,
       quicklinks: true,
@@ -339,8 +376,8 @@ const App = () => {
       rss: true,
       github: true,
       timer: true,
-      browserhistory: false, // Browser History widget - default off
-      notesreminders: true, // Notes & Reminders widget - default on
+      browserhistory: true, // Browser History widget - visible in logged layout
+      notesreminders: true, // Notes & Reminders widget - visible in logged layout
     };
   });
 
@@ -439,18 +476,19 @@ const App = () => {
     if (storedLayouts) {
       return JSON.parse(storedLayouts);
     }
-    // Updated layout based on user request
+    // Layout based on the logged positions from Edit Mode Saved
     return {
-      weather:    { i: 'weather',    x: 0,  y: 0,  w: 3, h: 8 },
-      quicklinks: { i: 'quicklinks', x: 3,  y: 0,  w: 6, h: 4 },
-      calendar:   { i: 'calendar',   x: 9,  y: 0,  w: 3, h: 8 },
-      music:      { i: 'music',      x: 0,  y: 8,  w: 3, h: 10 },
-      todo:       { i: 'todo',       x: 3,  y: 5,  w: 3, h: 8 },
-      timer:      { i: 'timer',      x: 6,  y: 5,  w: 3, h: 8 },
-      rss:        { i: 'rss',        x: 9,  y: 5,  w: 3, h: 10 },
-      github:     { i: 'github',     x: 3,  y: 13, w: 6, h: 6 },
-      browserhistory: { i: 'browserhistory', x: 0, y: 18, w: 4, h: 10 }, // Browser History widget
-      notesreminders: { i: 'notesreminders', x: 0, y: 18, w: 6, h: 12 }, // Notes & Reminders widget
+      weather:        { i: 'weather',        x: 0,  y: 0,  w: 3, h: 8 },
+      quicklinks:     { i: 'quicklinks',     x: 3,  y: 0,  w: 6, h: 4 },
+      clock:          { i: 'clock',          x: 9,  y: 0,  w: 3, h: 4 },
+      notesreminders: { i: 'notesreminders', x: 3,  y: 4,  w: 3, h: 14 },
+      rss:            { i: 'rss',            x: 6,  y: 4,  w: 3, h: 14 },
+      calendar:       { i: 'calendar',       x: 9,  y: 4,  w: 3, h: 8 },
+      music:          { i: 'music',          x: 0,  y: 8,  w: 3, h: 10 },
+      github:         { i: 'github',         x: 9,  y: 12, w: 3, h: 7 },
+      todo:           { i: 'todo',           x: 3,  y: 18, w: 3, h: 8 },
+      timer:          { i: 'timer',          x: 6,  y: 18, w: 3, h: 8 },
+      browserhistory: { i: 'browserhistory', x: 9,  y: 19, w: 3, h: 10 },
     };
   });
 
@@ -504,6 +542,11 @@ const App = () => {
          const localVisibility = localStorage.getItem('widgetVisibility');
         if (localVisibility) setWidgetVisibility(JSON.parse(localVisibility));
     }
+
+    // Log initial layout state
+    setTimeout(() => {
+      logWidgetLayouts(widgetLayouts, 'App Initialization');
+    }, 100); // Small delay to ensure all state is loaded
 
   }, []);
 
@@ -618,6 +661,95 @@ const App = () => {
     return newLayouts;
   }, [availableWidgets, widgetVisibility, widgetLayouts, columnCount.lg]);
 
+  // Store original widget positions to restore when re-enabled
+  const [originalWidgetLayouts] = useState<Record<string, WidgetLayout>>(() => {
+    // Layout based on the logged positions from Edit Mode Saved
+    return {
+      weather:        { i: 'weather',        x: 0,  y: 0,  w: 3, h: 8 },
+      quicklinks:     { i: 'quicklinks',     x: 3,  y: 0,  w: 6, h: 4 },
+      clock:          { i: 'clock',          x: 9,  y: 0,  w: 3, h: 4 },
+      notesreminders: { i: 'notesreminders', x: 3,  y: 4,  w: 3, h: 14 },
+      rss:            { i: 'rss',            x: 6,  y: 4,  w: 3, h: 14 },
+      calendar:       { i: 'calendar',       x: 9,  y: 4,  w: 3, h: 8 },
+      music:          { i: 'music',          x: 0,  y: 8,  w: 3, h: 10 },
+      github:         { i: 'github',         x: 9,  y: 12, w: 3, h: 7 },
+      todo:           { i: 'todo',           x: 3,  y: 18, w: 3, h: 8 },
+      timer:          { i: 'timer',          x: 6,  y: 18, w: 3, h: 8 },
+      browserhistory: { i: 'browserhistory', x: 9,  y: 19, w: 3, h: 10 },
+    };
+  });
+
+  // Function to move widgets vertically upward to fill gaps
+  const compactWidgetsVertically = useCallback((layouts: Record<string, WidgetLayout>, visibility: Record<string, boolean>) => {
+    const visibleWidgets = availableWidgets.filter(w => visibility[w.id]);
+    const newLayouts: Record<string, WidgetLayout> = { ...layouts };
+    
+    // Group widgets by column (x position)
+    const columnGroups: Record<number, Array<{ widget: any, layout: WidgetLayout }>> = {};
+    
+    visibleWidgets.forEach(widget => {
+      const layout = layouts[widget.id];
+      if (layout) {
+        // Group by starting x position
+        const x = layout.x;
+        if (!columnGroups[x]) {
+          columnGroups[x] = [];
+        }
+        columnGroups[x].push({ widget, layout });
+      }
+    });
+    
+    // For each column group, sort by y position and compact vertically
+    Object.keys(columnGroups).forEach(xKey => {
+      const x = parseInt(xKey);
+      const widgets = columnGroups[x];
+      
+      // Sort widgets in this column by y position
+      widgets.sort((a, b) => a.layout.y - b.layout.y);
+      
+      // Compact vertically - move each widget up to fill gaps
+      let currentY = 0;
+      widgets.forEach(({ widget, layout }) => {
+        // Check if there's space above this widget
+        let canMoveUp = true;
+        let targetY = currentY;
+        
+        // Check for conflicts with widgets in overlapping columns
+        while (canMoveUp && targetY < layout.y) {
+          // Check if this position conflicts with any other visible widget
+          const hasConflict = visibleWidgets.some(otherWidget => {
+            if (otherWidget.id === widget.id) return false;
+            const otherLayout = newLayouts[otherWidget.id];
+            if (!otherLayout) return false;
+            
+            // Check if widgets overlap
+            const xOverlap = !(layout.x >= otherLayout.x + otherLayout.w || layout.x + layout.w <= otherLayout.x);
+            const yOverlap = !(targetY >= otherLayout.y + otherLayout.h || targetY + layout.h <= otherLayout.y);
+            
+            return xOverlap && yOverlap;
+          });
+          
+          if (hasConflict) {
+            targetY++;
+          } else {
+            canMoveUp = false;
+          }
+        }
+        
+        // Update the widget's position
+        newLayouts[widget.id] = {
+          ...layout,
+          y: targetY
+        };
+        
+        // Update currentY for the next widget in this column
+        currentY = Math.max(currentY, targetY + layout.h);
+      });
+    });
+    
+    return newLayouts;
+  }, [availableWidgets]);
+
   // --- Handlers ---
   const handleOpenSettings = () => setSettingsOpen(true);
   const handleCloseSettings = () => setSettingsOpen(false);
@@ -630,11 +762,42 @@ const App = () => {
   };
 
   const handleVisibilityChange = useCallback((widgetId: string) => {
-    setWidgetVisibility(prev => ({
-      ...prev,
-      [widgetId]: !prev[widgetId],
-    }));
-  }, []);
+    setWidgetVisibility(prev => {
+      const newVisibility = {
+        ...prev,
+        [widgetId]: !prev[widgetId],
+      };
+      
+      // Log visibility change
+      console.group(`👁️ Widget Visibility Change - ${widgetId.toUpperCase()}`);
+      console.log(`📅 Timestamp: ${new Date().toLocaleString()}`);
+      console.log(`📦 Widget: ${widgetId}`);
+      console.log(`🔄 Status: ${prev[widgetId] ? 'VISIBLE' : 'HIDDEN'} → ${!prev[widgetId] ? 'VISIBLE' : 'HIDDEN'}`);
+      if (!prev[widgetId] && widgetLayouts[widgetId]) {
+        console.log(`📍 Position: (${widgetLayouts[widgetId].x}, ${widgetLayouts[widgetId].y})`);
+        console.log(`📏 Size: ${widgetLayouts[widgetId].w} × ${widgetLayouts[widgetId].h}`);
+      }
+      console.groupEnd();
+      
+      if (prev[widgetId]) {
+        // Widget is being disabled - compact remaining widgets vertically
+        const newLayouts = compactWidgetsVertically(widgetLayouts, newVisibility);
+        setWidgetLayouts(newLayouts);
+        logWidgetLayouts(newLayouts, `Vertical Compact After Disabling ${widgetId.toUpperCase()}`);
+      } else {
+        // Widget is being enabled - restore to original position and compact
+        const restoredLayouts = {
+          ...widgetLayouts,
+          [widgetId]: originalWidgetLayouts[widgetId] || widgetLayouts[widgetId]
+        };
+        const newLayouts = compactWidgetsVertically(restoredLayouts, newVisibility);
+        setWidgetLayouts(newLayouts);
+        logWidgetLayouts(newLayouts, `Restore and Compact After Enabling ${widgetId.toUpperCase()}`);
+      }
+      
+      return newVisibility;
+    });
+  }, [widgetLayouts, compactWidgetsVertically, originalWidgetLayouts]);
 
   const handleWallpaperChange = useCallback((wallpaperPath: string) => {
     setCurrentWallpaper(wallpaperPath);
@@ -661,12 +824,20 @@ const App = () => {
       // Exiting edit mode, apply deletions and layout changes
       setWidgetVisibility(tempWidgetVisibility);
       setWidgetLayouts(tempWidgetLayouts);
+      
+      // Log the final saved layout
+      logWidgetLayouts(tempWidgetLayouts, 'Edit Mode Saved');
+      
       setSnackbarMessage('Changes saved!');
       setSnackbarOpen(true);
     } else {
       // Entering edit mode, initialize temporary visibility and layouts
       setTempWidgetVisibility(widgetVisibility);
       setTempWidgetLayouts(widgetLayouts);
+      
+      // Log the initial layout when entering edit mode
+      logWidgetLayouts(widgetLayouts, 'Edit Mode Started');
+      
       setSnackbarMessage('You can now move, resize, or delete widgets');
       setSnackbarOpen(true);
     }
@@ -687,6 +858,9 @@ const App = () => {
         };
       });
       setTempWidgetLayouts(newLayouts);
+      
+      // Log the layout changes
+      logWidgetLayouts(newLayouts, 'Widget Drag/Resize');
     }
   };
 
@@ -695,14 +869,34 @@ const App = () => {
   };
 
   // Add handler to disable (delete) a widget in edit mode
-  const handleDisableWidget = (widgetId: string) => {
-    setTempWidgetVisibility(prev => ({
-      ...prev,
-      [widgetId]: false,
-    }));
-    setSnackbarMessage('Widget marked for deletion');
+  const handleDisableWidget = useCallback((widgetId: string) => {
+    setTempWidgetVisibility(prev => {
+      const newVisibility = {
+        ...prev,
+        [widgetId]: false,
+      };
+      
+      // Compact remaining widgets vertically
+      const newLayouts = compactWidgetsVertically(tempWidgetLayouts, newVisibility);
+      setTempWidgetLayouts(newLayouts);
+      
+      // Log widget deletion and repositioning
+      console.group(`🗑️ Widget Deletion - ${widgetId.toUpperCase()}`);
+      console.log(`📅 Timestamp: ${new Date().toLocaleString()}`);
+      console.log(`📦 Deleted Widget: ${widgetId}`);
+      console.log(`📍 Previous Position: (${tempWidgetLayouts[widgetId]?.x || 0}, ${tempWidgetLayouts[widgetId]?.y || 0})`);
+      console.log(`📏 Previous Size: ${tempWidgetLayouts[widgetId]?.w || 0} × ${tempWidgetLayouts[widgetId]?.h || 0}`);
+      console.groupEnd();
+      
+      // Log the repositioning
+      logWidgetLayouts(newLayouts, `Vertical Compact After Deleting ${widgetId.toUpperCase()} (Edit Mode)`);
+      
+      return newVisibility;
+    });
+    
+    setSnackbarMessage('Widget deleted and layout reorganized');
     setSnackbarOpen(true);
-  };
+  }, [tempWidgetLayouts, compactWidgetsVertically]);
 
   // Column count handlers
   const handleIncreaseColumns = () => {
@@ -731,6 +925,10 @@ const App = () => {
   const handleAutoArrange = () => {
     const optimalLayout = generateOptimalLayout();
     setWidgetLayouts(optimalLayout);
+    
+    // Log the auto-arranged layout
+    logWidgetLayouts(optimalLayout, 'Auto-Arrange Applied');
+    
     setSnackbarMessage('Widgets auto-arranged');
     setSnackbarOpen(true);
   };
@@ -741,6 +939,9 @@ const App = () => {
       // Column count has changed, rearrange widgets
       const optimalLayout = generateOptimalLayout();
       setWidgetLayouts(optimalLayout);
+      
+      // Log the column count change and resulting layout
+      logWidgetLayouts(optimalLayout, `Column Count Changed (${prevColumnCount.current} → ${columnCount.lg})`);
       
       // Update the previous column count
       prevColumnCount.current = columnCount.lg;
@@ -941,7 +1142,7 @@ const App = () => {
       {/* Edit mode indicator */}
       {editMode && (
         <>
-          <Typography
+          <Box
             sx={{
               position: 'fixed',
               top: 16,
@@ -967,7 +1168,7 @@ const App = () => {
             <Box sx={{ mx: 1, color: 'rgba(255,255,255,0.5)' }}>•</Box>
             <OpenWithIcon fontSize="small" />
             <span>Resize from edges/corners</span>
-          </Typography>
+          </Box>
           
           {/* Column controls toggle button */}
           <Tooltip title="Change column layout">

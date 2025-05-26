@@ -276,9 +276,17 @@ const BrowserHistory: React.FC = () => {
             </Select>
           </FormControl>
 
-          <IconButton size="small" onClick={handleRefresh} disabled={loading} title="Refresh History">
-            <RefreshIcon />
-          </IconButton>
+          {loading ? (
+            <span title="Refresh History">
+              <IconButton size="small" disabled sx={{ pointerEvents: 'none' }}>
+                <RefreshIcon />
+              </IconButton>
+            </span>
+          ) : (
+            <IconButton size="small" onClick={handleRefresh} title="Refresh History">
+              <RefreshIcon />
+            </IconButton>
+          )}
         </Box>
       </Box>
 
