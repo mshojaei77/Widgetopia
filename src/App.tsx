@@ -19,7 +19,6 @@ import type { Layout } from 'react-grid-layout';
 // Import Widgets
 import Clock from './widgets/Clock';
 import Weather from './widgets/Weather'; // Assuming Weather exists
-import TodoList from './widgets/TodoList'; // Assuming TodoList exists
 import QuickLinks from './widgets/QuickLinks';
 import Calendar from './widgets/Calendar'; // Import the new Calendar widget
 import AddQuickLinkForm from './components/AddQuickLinkForm'; 
@@ -32,7 +31,7 @@ import RSS from './widgets/RSS'; // Import the RSS widget
 import Github from './widgets/Github'; // Import the GitHub widget
 import Timer from './widgets/Timer'; // Import the Timer widget
 import BrowserHistory from './widgets/BrowserHistory'; // Import the BrowserHistory widget
-import NotesReminders from './widgets/NotesReminders'; // Import the NotesReminders widget
+import NotesReminders from './widgets/NotesReminders'; // Import the NotesReminders widget (now includes todos)
 
 // import './App.css'; // Removed as file doesn't exist
 
@@ -348,7 +347,6 @@ const App = () => {
   const availableWidgets = [
     { id: 'clock', name: 'Clock', component: Clock },
     { id: 'weather', name: 'Weather', component: Weather },
-    { id: 'todo', name: 'Todo List', component: TodoList },
     { id: 'quicklinks', name: 'Quick Links', component: QuickLinks },
     { id: 'calendar', name: 'Calendar', component: Calendar }, // Add Calendar widget
     { id: 'music', name: 'Music Player', component: Music }, // Add Music widget
@@ -356,7 +354,7 @@ const App = () => {
     { id: 'github', name: 'GitHub Contributions', component: Github }, // Add GitHub widget
     { id: 'timer', name: 'Working Timer', component: Timer }, // Add Timer widget
     { id: 'browserhistory', name: 'Browser History', component: BrowserHistory }, // Add BrowserHistory widget
-    { id: 'notesreminders', name: 'Notes & Reminders', component: NotesReminders }, // Add NotesReminders widget
+    { id: 'notesreminders', name: 'Notes, Reminders & Todos', component: NotesReminders }, // Add NotesReminders widget (now includes todos)
   ];
 
   // Widget Visibility State
@@ -365,19 +363,18 @@ const App = () => {
     if (storedVisibility) {
       return JSON.parse(storedVisibility);
     }
-    // Default visibility based on the logged layout (all 11 widgets visible)
+    // Default visibility based on the logged layout (all 10 widgets visible)
     return {
+      quicklinks: true,
       clock: true, // Clock is visible in the logged layout
       weather: true,
-      todo: true,
-      quicklinks: true,
       calendar: true,
       music: true,
       rss: true,
       github: true,
       timer: true,
       browserhistory: true, // Browser History widget - visible in logged layout
-      notesreminders: true, // Notes & Reminders widget - visible in logged layout
+      notesreminders: true, // Notes, Reminders & Todos widget - visible in logged layout
     };
   });
 
@@ -467,8 +464,7 @@ const App = () => {
     ];
   });
 
-  // Todo List State (Assuming TodoList uses this structure)
-  const [todos, setTodos] = useState<Todo[]>([]); 
+ 
 
   // Widget Layout State
   const [widgetLayouts, setWidgetLayouts] = useState<Record<string, WidgetLayout>>(() => {
@@ -486,7 +482,6 @@ const App = () => {
       calendar:       { i: 'calendar',       x: 9,  y: 4,  w: 3, h: 8 },
       music:          { i: 'music',          x: 0,  y: 8,  w: 3, h: 10 },
       github:         { i: 'github',         x: 9,  y: 12, w: 3, h: 7 },
-      todo:           { i: 'todo',           x: 3,  y: 18, w: 3, h: 8 },
       timer:          { i: 'timer',          x: 6,  y: 18, w: 3, h: 8 },
       browserhistory: { i: 'browserhistory', x: 9,  y: 19, w: 3, h: 10 },
     };
@@ -513,9 +508,8 @@ const App = () => {
     // Get quick links
     try {
         if (chrome.storage && chrome.storage.sync) {
-            chrome.storage.sync.get(['quickLinks', 'todos', 'selectedWallpaper', 'widgetVisibility'], (result) => {
+            chrome.storage.sync.get(['quickLinks', 'selectedWallpaper', 'widgetVisibility'], (result) => {
                 if (result.quickLinks) setQuickLinks(result.quickLinks);
-                if (result.todos) setTodos(result.todos); 
                 if (result.selectedWallpaper) setCurrentWallpaper(result.selectedWallpaper);
                 if (result.widgetVisibility) setWidgetVisibility(result.widgetVisibility);
             });
@@ -523,8 +517,7 @@ const App = () => {
             // Fallback to localStorage if chrome.storage is not available
             const localLinks = localStorage.getItem('quickLinks');
             if (localLinks) setQuickLinks(JSON.parse(localLinks));
-            const localTodos = localStorage.getItem('todos');
-            if (localTodos) setTodos(JSON.parse(localTodos));
+
             const localWallpaper = localStorage.getItem('selectedWallpaper');
             if (localWallpaper) setCurrentWallpaper(localWallpaper);
              const localVisibility = localStorage.getItem('widgetVisibility');
@@ -535,8 +528,7 @@ const App = () => {
         // Load defaults from localStorage as a fallback
         const localLinks = localStorage.getItem('quickLinks');
         if (localLinks) setQuickLinks(JSON.parse(localLinks));
-        const localTodos = localStorage.getItem('todos');
-        if (localTodos) setTodos(JSON.parse(localTodos));
+
          const localWallpaper = localStorage.getItem('selectedWallpaper');
         if (localWallpaper) setCurrentWallpaper(localWallpaper);
          const localVisibility = localStorage.getItem('widgetVisibility');
@@ -572,20 +564,7 @@ const App = () => {
     localStorage.setItem('weatherLocation', location);
   }, [location]);
 
-  // Save todos (example, adapt to your TodoList implementation)
-  useEffect(() => {
-    try {
-        if (chrome.storage && chrome.storage.sync) {
-             chrome.storage.sync.set({ todos: todos });
-        } else {
-            localStorage.setItem('todos', JSON.stringify(todos));
-        }
-    } catch (error) {
-        console.error('Error saving todos:', error);
-         localStorage.setItem('todos', JSON.stringify(todos));
-    }
-   
-  }, [todos]);
+
 
   // Save quick links (moved from QuickLinks component)
   useEffect(() => {
@@ -663,7 +642,7 @@ const App = () => {
 
   // Store original widget positions to restore when re-enabled
   const [originalWidgetLayouts] = useState<Record<string, WidgetLayout>>(() => {
-    // Layout based on the logged positions from Edit Mode Saved
+    // Layout based on the logged positions from Edit Mode Saved (todo merged into notesreminders)
     return {
       weather:        { i: 'weather',        x: 0,  y: 0,  w: 3, h: 8 },
       quicklinks:     { i: 'quicklinks',     x: 3,  y: 0,  w: 6, h: 4 },
@@ -673,7 +652,6 @@ const App = () => {
       calendar:       { i: 'calendar',       x: 9,  y: 4,  w: 3, h: 8 },
       music:          { i: 'music',          x: 0,  y: 8,  w: 3, h: 10 },
       github:         { i: 'github',         x: 9,  y: 12, w: 3, h: 7 },
-      todo:           { i: 'todo',           x: 3,  y: 18, w: 3, h: 8 },
       timer:          { i: 'timer',          x: 6,  y: 18, w: 3, h: 8 },
       browserhistory: { i: 'browserhistory', x: 9,  y: 19, w: 3, h: 10 },
     };
@@ -964,10 +942,7 @@ const App = () => {
     if (widgetId === 'quicklinks') {
       widgetProps = { links: quickLinks, setLinks: setQuickLinks, onShowAddForm: handleShowAddLinkForm, openInNewTab: openQuickLinksInNewTab };
     }
-    if (widgetId === 'todo') {
-        // Assuming TodoList accepts todos and setTodos
-        widgetProps = { todos: todos, setTodos: setTodos }; 
-    }
+
     // Pass location to Weather widget
     if (widgetId === 'weather') {
       widgetProps = { location };
@@ -999,9 +974,7 @@ const App = () => {
     .map(widget => {
       // Pass necessary props to each widget component based on its type
       let widgetProps: any = {};
-      if (widget.id === 'todo') {
-        widgetProps = { todos, setTodos };
-      } else if (widget.id === 'weather') {
+      if (widget.id === 'weather') {
         widgetProps = { location };
       } else if (widget.id === 'calendar') {
         // Calendar doesn't need any special props for now

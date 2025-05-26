@@ -30,6 +30,8 @@ import {
   Card,
   CardContent,
   Badge,
+  ListItemIcon,
+  Checkbox,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -50,6 +52,8 @@ import {
   Error as ErrorIcon,
   AccessTime as AccessTimeIcon,
   Flag as PriorityIcon,
+  RadioButtonUnchecked as UncheckedIcon,
+  Assignment as TodoIcon,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, isToday, isTomorrow, isPast, addDays, parseISO } from 'date-fns';
@@ -77,6 +81,13 @@ interface Reminder {
   source: 'local' | 'google' | 'telegram';
   externalId?: string;
   notificationSent?: boolean;
+}
+
+// Add Todo interface
+interface Todo {
+  id: number;
+  text: string;
+  completed: boolean;
 }
 
 interface GoogleCalendarEvent {
@@ -465,6 +476,7 @@ const NotesReminders: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [notes, setNotes] = useState<Note[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [todos, setTodos] = useState<Todo[]>([]);
   const [authState, setAuthState] = useState<AuthState>({
     google: { isAuthenticated: false },
     telegram: { isAuthenticated: false }
@@ -497,6 +509,9 @@ const NotesReminders: React.FC = () => {
   const [newItemCategory, setNewItemCategory] = useState<'personal' | 'work' | 'shopping' | 'health' | 'other'>('personal');
   const [newItemTags, setNewItemTags] = useState<string[]>([]);
   
+  // Todo form state
+  const [newTodo, setNewTodo] = useState('');
+  
   // Refs
   const autoLogoutTimer = useRef<NodeJS.Timeout | null>(null);
   const reauthTimer = useRef<NodeJS.Timeout | null>(null);
@@ -515,15 +530,16 @@ const NotesReminders: React.FC = () => {
   // Save data when state changes
   useEffect(() => {
     saveData();
-  }, [notes, reminders, authState, securityConfig]);
+  }, [notes, reminders, todos, authState, securityConfig]);
   
   const loadData = async () => {
     try {
       setLoading(true);
       
-      const [savedNotes, savedReminders, savedAuth, savedSecurity] = await Promise.all([
+      const [savedNotes, savedReminders, savedTodos, savedAuth, savedSecurity] = await Promise.all([
         SecureStorage.getSecureItem('notes-reminders-notes'),
         SecureStorage.getSecureItem('notes-reminders-reminders'),
+        SecureStorage.getSecureItem('notes-reminders-todos'),
         SecureStorage.getSecureItem('notes-reminders-auth'),
         SecureStorage.getSecureItem('notes-reminders-security')
       ]);
@@ -541,6 +557,18 @@ const NotesReminders: React.FC = () => {
           ...reminder,
           dueDate: new Date(reminder.dueDate)
         })));
+      }
+      
+      if (savedTodos) {
+        setTodos(savedTodos);
+      } else {
+        // Set default todos if none exist
+        const defaultTodos = [
+          { id: 1, text: 'Write design document', completed: true },
+          { id: 2, text: 'Call caterer', completed: false },
+          { id: 3, text: 'Read user feedback', completed: false },
+        ];
+        setTodos(defaultTodos);
       }
       
       if (savedAuth) {
@@ -563,6 +591,7 @@ const NotesReminders: React.FC = () => {
       await Promise.all([
         SecureStorage.setSecureItem('notes-reminders-notes', notes, securityConfig.enableEncryption),
         SecureStorage.setSecureItem('notes-reminders-reminders', reminders, securityConfig.enableEncryption),
+        SecureStorage.setSecureItem('notes-reminders-todos', todos, securityConfig.enableEncryption),
         SecureStorage.setSecureItem('notes-reminders-auth', authState, true), // Always encrypt auth data
         SecureStorage.setSecureItem('notes-reminders-security', securityConfig, false)
       ]);
@@ -798,7 +827,7 @@ const NotesReminders: React.FC = () => {
       };
       
       setNotes(prev => [newNote, ...prev]);
-    } else {
+    } else if (activeTab === 1) {
       // Add reminder
       const newReminder: Reminder = {
         id: `reminder-${Date.now()}`,
@@ -823,16 +852,39 @@ const NotesReminders: React.FC = () => {
     setNewItemTags([]);
     setShowAddDialog(false);
     
-    showSnackbar(`${activeTab === 0 ? 'Note' : 'Reminder'} added successfully`, 'success');
+    showSnackbar(`${activeTab === 0 ? 'Note' : activeTab === 1 ? 'Reminder' : 'Todo'} added successfully`, 'success');
+  };
+  
+  // Todo-specific functions
+  const handleAddTodo = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newTodo.trim() === '') return;
+    const newId = todos.length > 0 ? Math.max(...todos.map(t => t.id)) + 1 : 1;
+    setTodos([...todos, { id: newId, text: newTodo, completed: false }]);
+    setNewTodo('');
+    showSnackbar('Todo added successfully', 'success');
+  };
+  
+  const handleToggleTodo = (id: number) => {
+    setTodos(prevTodos =>
+      prevTodos.map(todo =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+      )
+    );
+  };
+  
+  const handleDeleteTodo = (id: number) => {
+    setTodos(prevTodos => prevTodos.filter(todo => todo.id !== id));
+    showSnackbar('Todo deleted', 'success');
   };
   
   const handleDeleteItem = (id: string) => {
     if (activeTab === 0) {
       setNotes(prev => prev.filter(note => note.id !== id));
-    } else {
+    } else if (activeTab === 1) {
       setReminders(prev => prev.filter(reminder => reminder.id !== id));
     }
-    showSnackbar(`${activeTab === 0 ? 'Note' : 'Reminder'} deleted`, 'success');
+    showSnackbar(`${activeTab === 0 ? 'Note' : activeTab === 1 ? 'Reminder' : 'Todo'} deleted`, 'success');
   };
   
   const handleToggleReminder = (id: string) => {
@@ -988,6 +1040,14 @@ const NotesReminders: React.FC = () => {
             </Box>
           }
         />
+        <Tab
+          label={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TodoIcon />
+              Todos ({todos.filter(t => !t.completed).length})
+            </Box>
+          }
+        />
       </Tabs>
       
       {/* Content */}
@@ -1092,7 +1152,7 @@ const NotesReminders: React.FC = () => {
               </Box>
             )}
           </List>
-        ) : (
+        ) : activeTab === 1 ? (
           // Reminders Tab
           <List sx={{ height: '100%', overflow: 'auto', px: 0 }}>
             <AnimatePresence>
@@ -1230,6 +1290,223 @@ const NotesReminders: React.FC = () => {
               </Box>
             )}
           </List>
+        ) : (
+          // Todos Tab
+          <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            {/* Todo Add Form */}
+            <Box 
+              component="form" 
+              onSubmit={handleAddTodo} 
+              sx={{ 
+                display: 'flex', 
+                mb: 2,
+                position: 'relative',
+              }}
+            >
+              <TextField
+                fullWidth
+                size="small"
+                variant="outlined"
+                value={newTodo}
+                onChange={(e) => setNewTodo(e.target.value)}
+                placeholder="Add a new task"
+                sx={{ 
+                  mr: 1,
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+                    borderRadius: 'var(--radius-md)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    transition: 'all 0.3s ease',
+                    '& fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.15)',
+                      transition: 'border-color 0.3s ease',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: 'var(--primary-color)',
+                      boxShadow: '0 0 15px rgba(138, 180, 248, 0.3)',
+                    }
+                  },
+                  '& .MuiInputBase-input': {
+                    color: 'white',
+                    '&::placeholder': {
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      opacity: 1,
+                    }
+                  }
+                }}
+              />
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                startIcon={<AddIcon />}
+                sx={{ 
+                  whiteSpace: 'nowrap',
+                  borderRadius: 'var(--radius-md)',
+                  bgcolor: 'var(--primary-color)',
+                  boxShadow: '0 4px 10px rgba(138, 180, 248, 0.3)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    bgcolor: 'var(--primary-color)',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 6px 15px rgba(138, 180, 248, 0.4)',
+                  },
+                  '&:active': {
+                    transform: 'translateY(0)',
+                    boxShadow: '0 2px 5px rgba(138, 180, 248, 0.3)',
+                  }
+                }}
+              >
+                Add
+              </Button>
+            </Box>
+
+            {/* Todo List */}
+            <List sx={{ 
+              overflowY: 'auto', 
+              flexGrow: 1, 
+              px: 0.5,
+              '&::-webkit-scrollbar': {
+                width: '6px',
+              },
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                borderRadius: '3px'
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '3px',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                }
+              },
+            }}>
+              <AnimatePresence>
+                {todos.length === 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <ListItem>
+                      <ListItemText 
+                        secondary="No tasks yet. Add one above!" 
+                        sx={{ 
+                          textAlign: 'center', 
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          fontStyle: 'italic' 
+                        }} 
+                      />
+                    </ListItem>
+                  </motion.div>
+                ) : (
+                  todos.map(todo => (
+                    <motion.div
+                      key={todo.id}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      variants={itemVariants}
+                      layout
+                    >
+                      <ListItem
+                        dense
+                        secondaryAction={
+                          <IconButton 
+                            edge="end" 
+                            aria-label="delete" 
+                            onClick={() => handleDeleteTodo(todo.id)} 
+                            size="small"
+                            sx={{
+                              color: 'rgba(255, 255, 255, 0.6)',
+                              transition: 'all 0.2s ease',
+                              '&:hover': {
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                transform: 'scale(1.1)',
+                              }
+                            }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        }
+                        sx={{ 
+                          transition: 'all 0.3s ease',
+                          '&:hover': { 
+                            bgcolor: 'rgba(255, 255, 255, 0.07)',
+                            transform: 'translateX(4px)'
+                          },
+                          borderRadius: 'var(--radius-sm)',
+                          mb: 0.7,
+                          padding: '8px 16px',
+                          backdropFilter: 'blur(8px)',
+                          WebkitBackdropFilter: 'blur(8px)',
+                          border: todo.completed ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(255, 255, 255, 0.1)',
+                          opacity: todo.completed ? 0.7 : 1,
+                          background: todo.completed ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.05)',
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 'auto', mr: 1.5 }}>
+                          <Checkbox
+                            className={`custom-checkbox ${todo.completed ? 'checked' : ''}`}
+                            edge="start"
+                            checked={todo.completed}
+                            tabIndex={-1}
+                            disableRipple
+                            onClick={() => handleToggleTodo(todo.id)}
+                            icon={
+                              <UncheckedIcon 
+                                sx={{ 
+                                  color: 'rgba(255, 255, 255, 0.7)',
+                                  transition: 'all 0.2s ease',
+                                  '&:hover': {
+                                    color: 'var(--primary-color)',
+                                    transform: 'scale(1.1)'
+                                  }
+                                }} 
+                              />
+                            }
+                            checkedIcon={
+                              <CheckCircleIcon 
+                                sx={{ 
+                                  color: 'var(--primary-color)',
+                                  filter: 'drop-shadow(0 0 3px rgba(138, 180, 248, 0.5))'
+                                }} 
+                              />
+                            }
+                            sx={{
+                              '&.Mui-checked': {
+                                '& svg': {
+                                  animation: 'bounce 0.4s'
+                                }
+                              }
+                            }}
+                          />
+                        </ListItemIcon>
+                        <ListItemText 
+                          primary={todo.text} 
+                          sx={{ 
+                            textDecoration: todo.completed ? 'line-through' : 'none',
+                            transition: 'all 0.3s ease',
+                            '& .MuiListItemText-primary': {
+                              color: todo.completed ? 'rgba(255, 255, 255, 0.7)' : 'white',
+                              transition: 'color 0.3s ease',
+                              fontWeight: todo.completed ? 'normal' : 500,
+                              letterSpacing: '0.1px',
+                              lineHeight: 1.4,
+                            }
+                          }} 
+                        />
+                      </ListItem>
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
+            </List>
+          </Box>
         )}
       </Box>
       
@@ -1248,7 +1525,7 @@ const NotesReminders: React.FC = () => {
         }}
       >
         <DialogTitle sx={{ color: 'white' }}>
-          Add New {activeTab === 0 ? 'Note' : 'Reminder'}
+          Add New {activeTab === 0 ? 'Note' : activeTab === 1 ? 'Reminder' : 'Todo'}
         </DialogTitle>
         <DialogContent>
           <TextField
