@@ -4,8 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000",
+    "dev:fast": "vite --port 3000 --force",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:fast": "vite build --mode production",
+    "preview": "vite preview",
+    "optimize": "npm run build:fast && npm run preview"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -14,6 +17,7 @@
     "@types/react-beautiful-dnd": "^13.1.8",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.3.4",
+    "terser": "^5.39.2",
     "typescript": "^5.8.3",
     "vite": "^6.2.6"
   },

@@ -25,7 +25,7 @@ const Calendar: React.FC = () => {
   return (
     <Paper
       elevation={0}
-      className="glass"
+      className="glass glass-neon glass-glow glass-interactive"
       sx={{
         p: 2,
         height: '100%',
@@ -35,6 +35,7 @@ const Calendar: React.FC = () => {
         position: 'relative',
         overflow: 'hidden',
         color: 'var(--text-light)',
+        animation: 'fadeIn 1s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
       <Box sx={{ flex: 1 }}>

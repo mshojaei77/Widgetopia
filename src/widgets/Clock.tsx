@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Paper, Typography, Box } from '@mui/material';
-import { motion } from 'framer-motion';
 
 const Clock: React.FC = () => {
   const [time, setTime] = useState(new Date());
@@ -34,7 +33,7 @@ const Clock: React.FC = () => {
   return (
     <Paper 
       elevation={0} 
-      className="glass" 
+      className="glass glass-neon glass-interactive" 
       sx={{ 
         p: 2, 
         height: '100%',
@@ -54,11 +53,7 @@ const Clock: React.FC = () => {
         width: '100%',
         flex: 1
       }}>
-        <motion.div
-          initial={{ y: 5, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.1, duration: 0.4 }}
-        >
+        <Box>
           <Typography variant="h2" sx={{ 
             fontSize: { xs: '2.2rem', sm: '2.5rem', md: '3rem' }, 
             fontWeight: 500,
@@ -76,7 +71,7 @@ const Clock: React.FC = () => {
           }}>
             {formatDate(time)}
           </Typography>
-        </motion.div>
+        </Box>
       </Box>
     </Paper>
   );

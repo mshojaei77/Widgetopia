@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Paper, Typography, Box, IconButton, Stack } from '@mui/material';
-import { motion } from 'framer-motion';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
@@ -45,7 +44,7 @@ const Timer: React.FC = () => {
   return (
     <Paper 
       elevation={0} 
-      className="glass" 
+      className="glass glass-glow glass-morph" 
       sx={{ 
         p: 1.5, 
         height: '100%',
@@ -69,11 +68,7 @@ const Timer: React.FC = () => {
         width: '100%',
         flex: 1
       }}>
-        <motion.div
-          initial={{ y: 5, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.1, duration: 0.4 }}
-        >
+        <Box>
           <Typography variant="h3" sx={{ 
             fontSize: { xs: '1.8rem', sm: '2rem', md: '2.2rem' }, 
             fontWeight: 500,
@@ -84,36 +79,34 @@ const Timer: React.FC = () => {
           }}>
             {formatTime(elapsedTime)}
           </Typography>
-        </motion.div>
+        </Box>
       </Box>
-
+      
       <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
         <IconButton 
-          color={isRunning ? "error" : "primary"}
           onClick={handleStartStop}
-          size="small"
           sx={{ 
-            bgcolor: isRunning ? 'rgba(211, 47, 47, 0.2)' : 'rgba(25, 118, 210, 0.2)',
+            color: 'white',
+            bgcolor: isRunning ? 'rgba(255, 152, 0, 0.8)' : 'rgba(76, 175, 80, 0.8)',
             '&:hover': {
-              bgcolor: isRunning ? 'rgba(211, 47, 47, 0.3)' : 'rgba(25, 118, 210, 0.3)'
+              bgcolor: isRunning ? 'rgba(255, 152, 0, 1)' : 'rgba(76, 175, 80, 1)',
             }
           }}
         >
-          {isRunning ? <PauseIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
+          {isRunning ? <PauseIcon /> : <PlayArrowIcon />}
         </IconButton>
+        
         <IconButton 
           onClick={handleReset}
-          disabled={elapsedTime === 0}
-          size="small"
           sx={{ 
-            color: 'text.secondary',
-            bgcolor: 'rgba(255, 255, 255, 0.1)',
+            color: 'white',
+            bgcolor: 'rgba(244, 67, 54, 0.8)',
             '&:hover': {
-              bgcolor: 'rgba(255, 255, 255, 0.2)'
+              bgcolor: 'rgba(244, 67, 54, 1)',
             }
           }}
         >
-          <RestartAltIcon fontSize="small" />
+          <RestartAltIcon />
         </IconButton>
       </Stack>
     </Paper>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Paper, 
   Box, 
@@ -25,9 +25,12 @@ import {
   ListItemSecondaryAction,
   Switch,
   FormControlLabel,
-  Slider
+  Slider,
+  Alert,
+  Snackbar
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
+import { CacheAnalytics } from '../utils/CacheAnalytics';
 import { 
   SkipNext, 
   SkipPrevious, 
@@ -125,6 +128,105 @@ const defaultPlaylists: Playlist[] = [
 interface Playlist {
   name: string;
   tracks: string[];
+}
+
+// SoundCloud iframe cache with expiration (24 hours)
+class SoundCloudCache {
+  private static readonly CACHE_KEY = 'soundcloud_iframe_cache';
+  private static readonly STATE_KEY = 'soundcloud_widget_state';
+  private static readonly CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+  static async getCachedIframe(url: string): Promise<string | null> {
+    try {
+      const cache = localStorage.getItem(this.CACHE_KEY);
+      if (!cache) return null;
+
+      const cacheData = JSON.parse(cache);
+      const item = cacheData[url];
+      
+      if (!item) return null;
+      
+      // Check if cache is expired
+      if (Date.now() - item.timestamp > this.CACHE_EXPIRY) {
+        this.removeCachedIframe(url);
+        return null;
+      }
+      
+      return item.iframeHtml;
+    } catch (error) {
+      console.warn('Error reading SoundCloud cache:', error);
+      return null;
+    }
+  }
+
+  static async setCachedIframe(url: string, iframeHtml: string): Promise<void> {
+    try {
+      const cache = localStorage.getItem(this.CACHE_KEY);
+      const cacheData = cache ? JSON.parse(cache) : {};
+      
+      cacheData[url] = {
+        iframeHtml,
+        timestamp: Date.now()
+      };
+      
+      localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheData));
+    } catch (error) {
+      console.warn('Error writing to SoundCloud cache:', error);
+    }
+  }
+
+  static removeCachedIframe(url: string): void {
+    try {
+      const cache = localStorage.getItem(this.CACHE_KEY);
+      if (!cache) return;
+
+      const cacheData = JSON.parse(cache);
+      delete cacheData[url];
+      localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheData));
+    } catch (error) {
+      console.warn('Error removing from SoundCloud cache:', error);
+    }
+  }
+
+  static saveWidgetState(state: any): void {
+    try {
+      localStorage.setItem(this.STATE_KEY, JSON.stringify({
+        ...state,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.warn('Error saving widget state:', error);
+    }
+  }
+
+  static getWidgetState(): any {
+    try {
+      const state = localStorage.getItem(this.STATE_KEY);
+      if (!state) return null;
+
+      const stateData = JSON.parse(state);
+      
+      // Check if state is expired (24 hours)
+      if (Date.now() - stateData.timestamp > this.CACHE_EXPIRY) {
+        localStorage.removeItem(this.STATE_KEY);
+        return null;
+      }
+      
+      return stateData;
+    } catch (error) {
+      console.warn('Error reading widget state:', error);
+      return null;
+    }
+  }
+
+  static clearCache(): void {
+    try {
+      localStorage.removeItem(this.CACHE_KEY);
+      localStorage.removeItem(this.STATE_KEY);
+    } catch (error) {
+      console.warn('Error clearing SoundCloud cache:', error);
+    }
+  }
 }
 
 // FallbackPlayer implementation
@@ -261,6 +363,7 @@ const Music: React.FC = () => {
   const [autoPlay, setAutoPlay] = useState<boolean>(false);
   const [useFallbackMode, setUseFallbackMode] = useState<boolean>(false);
   const [currentTrackTitle, setCurrentTrackTitle] = useState<string>('No track selected');
+  const [iframeLoaded, setIframeLoaded] = useState<boolean>(false);
   
   // Add state for widget dimensions
   const [widgetHeight, setWidgetHeight] = useState<number>(0);
@@ -526,8 +629,8 @@ const Music: React.FC = () => {
     }
   }, [widgetHeight]);
 
-  // Helper function to update the iframe source
-  const updateIframeSource = (url: string) => {
+  // Helper function to update the iframe source with caching
+  const updateIframeSource = async (url: string) => {
     if (!iframeRef.current) return;
     
     const isPlaylist = isPlaylistUrl(url);
@@ -546,11 +649,48 @@ const Music: React.FC = () => {
       embedUrl += '&single_active=false';
     }
     
-    iframeRef.current.src = embedUrl;
-    iframeRef.current.height = iframeHeight.toString();
+    // Check cache first for faster loading
+    const cachedIframe = await SoundCloudCache.getCachedIframe(embedUrl);
+    if (cachedIframe) {
+      CacheAnalytics.trackCacheHit('music', 'iframe');
+      // Use cached content for instant loading
+      iframeRef.current.srcdoc = cachedIframe;
+      iframeRef.current.height = iframeHeight.toString();
+      setIframeLoaded(true);
+      setTimeout(initializeWidget, 100);
+    } else {
+      CacheAnalytics.trackCacheMiss('music', 'iframe');
+      // Load normally and cache the result
+      iframeRef.current.src = embedUrl;
+      iframeRef.current.height = iframeHeight.toString();
+      setIframeLoaded(false);
+      
+      // Cache the iframe content after it loads
+      iframeRef.current.onload = async () => {
+        setIframeLoaded(true);
+        try {
+          if (iframeRef.current?.contentDocument) {
+            const iframeHtml = iframeRef.current.contentDocument.documentElement.outerHTML;
+            await SoundCloudCache.setCachedIframe(embedUrl, iframeHtml);
+          }
+        } catch (error) {
+          console.warn('Could not cache iframe content:', error);
+        }
+        setTimeout(initializeWidget, 100);
+      };
+    }
     
-    // Re-initialize widget after src change
-    setTimeout(initializeWidget, 100);
+    // Save current state to cache
+    SoundCloudCache.saveWidgetState({
+      currentUrl: url,
+      isPlaying,
+      volume,
+      showComments,
+      showRelated,
+      visual,
+      autoPlay,
+      iframeHeight
+    });
   };
 
   // Save playlists to localStorage when they change
@@ -764,7 +904,7 @@ const Music: React.FC = () => {
     <Paper 
       ref={containerRef}
       elevation={0} 
-      className="glass" 
+      className="glass glass-neon glass-particles glass-interactive" 
       sx={{ 
         p: 2, 
         height: '100%',
@@ -774,6 +914,7 @@ const Music: React.FC = () => {
         position: 'relative',
         overflow: 'hidden',
         gap: 1,
+
       }}
     >
       {/* Compact Header with Playlist Selector and Settings */}

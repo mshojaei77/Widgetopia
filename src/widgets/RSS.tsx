@@ -5,7 +5,7 @@ import {
   Dialog, DialogActions, DialogContent, DialogTitle, Fade,
   Select, MenuItem, FormControl, InputLabel
 } from '@mui/material';
-import { motion } from 'framer-motion';
+
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -55,7 +55,7 @@ const RSS: React.FC = () => {
 
   const [newFeedUrl, setNewFeedUrl] = useState('');
   const [feedItems, setFeedItems] = useState<RssItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Set to false for instant loading
   const [error, setError] = useState<string | null>(null);
 
   // Use state for active feed, load from storage or default to "all" feeds
@@ -314,7 +314,7 @@ const RSS: React.FC = () => {
   return (
     <Paper
       elevation={0}
-      className="glass"
+      className="glass glass-holographic glass-particles glass-premium"
       sx={{
         p: 2,
         height: '100%',
@@ -323,6 +323,7 @@ const RSS: React.FC = () => {
         borderRadius: 'var(--radius-lg)',
         position: 'relative',
         overflow: 'hidden',
+
       }}
     >
       <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
@@ -394,12 +395,7 @@ const RSS: React.FC = () => {
         ) : feedItems.length > 0 ? (
           <List sx={{ p: 0 }}>
             {feedItems.map((item, index) => (
-              <motion.div
-                key={item.link + index} // Add index for potential duplicate links
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05, duration: 0.3 }}
-              >
+              <Box key={item.link + index}>
                 <ListItem
                   alignItems="flex-start"
                   sx={{
@@ -467,7 +463,7 @@ const RSS: React.FC = () => {
                 {index < feedItems.length - 1 && (
                   <Divider component="li" sx={{ bgcolor: 'rgba(255, 255, 255, 0.04)' }} />
                 )}
-              </motion.div>
+              </Box>
             ))}
           </List>
         ) : !error ? ( // Only show "No items" if there wasn't a fetch error
@@ -484,11 +480,6 @@ const RSS: React.FC = () => {
         open={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
         PaperProps={{
-          component: motion.div,
-          initial: { opacity: 0, y: -20 },
-          animate: { opacity: 1, y: 0 },
-          exit: { opacity: 0, y: -20 },
-          transition: { duration: 0.2 },
           sx: {
             width: '90%',
             maxWidth: '500px', // Max width for the dialog

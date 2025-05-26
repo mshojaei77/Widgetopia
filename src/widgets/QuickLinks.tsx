@@ -2,6 +2,73 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Box, Typography, IconButton, Paper, Tooltip, Button } from '@mui/material';
 import { Add as AddIcon, DeleteOutline as DeleteIcon, Edit as EditIcon, Check as CheckIcon, DragIndicator as DragIndicatorIcon } from '@mui/icons-material';
 import type { QuickLink } from '../types';
+import { CacheAnalytics } from '../utils/CacheAnalytics';
+
+// Image cache with expiration (7 days)
+class ImageCache {
+  private static readonly CACHE_KEY = 'quicklinks_image_cache';
+  private static readonly CACHE_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
+  static async get(url: string): Promise<string | null> {
+    try {
+      const cache = localStorage.getItem(this.CACHE_KEY);
+      if (!cache) return null;
+
+      const cacheData = JSON.parse(cache);
+      const item = cacheData[url];
+      
+      if (!item) return null;
+      
+      // Check if cache is expired
+      if (Date.now() - item.timestamp > this.CACHE_EXPIRY) {
+        this.remove(url);
+        return null;
+      }
+      
+      return item.data;
+    } catch (error) {
+      console.warn('Error reading image cache:', error);
+      return null;
+    }
+  }
+
+  static async set(url: string, data: string): Promise<void> {
+    try {
+      const cache = localStorage.getItem(this.CACHE_KEY);
+      const cacheData = cache ? JSON.parse(cache) : {};
+      
+      cacheData[url] = {
+        data,
+        timestamp: Date.now()
+      };
+      
+      localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheData));
+    } catch (error) {
+      console.warn('Error writing to image cache:', error);
+    }
+  }
+
+  static remove(url: string): void {
+    try {
+      const cache = localStorage.getItem(this.CACHE_KEY);
+      if (!cache) return;
+
+      const cacheData = JSON.parse(cache);
+      delete cacheData[url];
+      localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheData));
+    } catch (error) {
+      console.warn('Error removing from image cache:', error);
+    }
+  }
+
+  static clear(): void {
+    try {
+      localStorage.removeItem(this.CACHE_KEY);
+    } catch (error) {
+      console.warn('Error clearing image cache:', error);
+    }
+  }
+}
 
 interface QuickLinksProps {
   links: QuickLink[];
@@ -10,30 +77,80 @@ interface QuickLinksProps {
   openInNewTab?: boolean;
 }
 
-const STORAGE_KEY = 'widgetopia_quick_links';
-
 const LocalIcon: React.FC<{ url: string; fallbackIcon: string }> = ({ url, fallbackIcon }) => {
-  const [srcList] = React.useState(() => {
-    try {
-      const domain = new URL(url).hostname.replace(/^www\./i, '').toLowerCase();
-      const extensions = ['webp', 'png', 'svg', 'ico', 'jpg', 'jpeg'];
-      return extensions.map(ext => `/quicklinkicons/${domain}.${ext}`).concat(fallbackIcon);
-    } catch {
-      return [fallbackIcon];
+  const [iconSrc, setIconSrc] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    const loadIcon = async () => {
+      setIsLoading(true);
+      setHasError(false);
+
+      // Check cache first
+      const cachedIcon = await ImageCache.get(url);
+      if (cachedIcon) {
+        CacheAnalytics.trackCacheHit('quicklinks', 'image');
+        setIconSrc(cachedIcon);
+        setIsLoading(false);
+        return;
+      }
+      
+      CacheAnalytics.trackCacheMiss('quicklinks', 'image');
+
+      // Try to load the icon
+      try {
+        const response = await fetch(url);
+        if (response.ok) {
+          const blob = await response.blob();
+          const reader = new FileReader();
+          reader.onload = async () => {
+            const base64Data = reader.result as string;
+            setIconSrc(base64Data);
+            // Cache the successful result
+            await ImageCache.set(url, base64Data);
+            setIsLoading(false);
+          };
+          reader.readAsDataURL(blob);
+        } else {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      } catch (error) {
+        console.warn(`Failed to load icon from ${url}:`, error);
+        setHasError(true);
+        setIconSrc(fallbackIcon);
+        setIsLoading(false);
+      }
+    };
+
+    if (url) {
+      loadIcon();
+    } else {
+      setIconSrc(fallbackIcon);
+      setIsLoading(false);
     }
-  });
-  const [idx, setIdx] = React.useState(0);
+  }, [url, fallbackIcon]);
+
   const handleError = () => {
-    if (idx < srcList.length - 1) {
-      setIdx(idx + 1);
+    if (!hasError) {
+      setHasError(true);
+      setIconSrc(fallbackIcon);
     }
   };
+
   return (
     <img
-      src={srcList[idx]}
-      alt=""
-      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      src={iconSrc || fallbackIcon}
+      alt="Site icon"
       onError={handleError}
+      style={{
+        width: '32px',
+        height: '32px',
+        borderRadius: '6px',
+        objectFit: 'cover',
+        opacity: isLoading ? 0.5 : 1,
+        transition: 'opacity 0.2s ease'
+      }}
     />
   );
 };
@@ -46,24 +163,32 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm,
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const dragThreshold = 5; // pixels to move before starting drag
   
-  // Load links from localStorage on component mount
+  // Preload all icons on component mount
   useEffect(() => {
-    const storedLinks = localStorage.getItem(STORAGE_KEY);
-    if (storedLinks) {
-      try {
-        const parsedLinks = JSON.parse(storedLinks);
-        if (Array.isArray(parsedLinks) && parsedLinks.length > 0) {
-          setLinks(parsedLinks);
+    const preloadIcons = async () => {
+      const preloadPromises = links.map(async (link) => {
+        if (link.icon && typeof link.icon === 'string' && !await ImageCache.get(link.icon)) {
+          try {
+            const response = await fetch(link.icon);
+            if (response.ok) {
+              const blob = await response.blob();
+              const reader = new FileReader();
+              reader.onload = async () => {
+                const base64Data = reader.result as string;
+                await ImageCache.set(link.icon!, base64Data);
+              };
+              reader.readAsDataURL(blob);
+            }
+          } catch (error) {
+            console.warn(`Failed to preload icon for ${link.title}:`, error);
+          }
         }
-      } catch (error) {
-        console.error('Failed to parse stored quick links:', error);
-      }
-    }
-  }, [setLinks]);
+      });
+      
+      await Promise.all(preloadPromises);
+    };
 
-  // Save links to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(links));
+    preloadIcons();
   }, [links]);
   
   const deleteLink = (id: number) => {
@@ -177,7 +302,7 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm,
   return (
     <Paper 
       elevation={0} 
-      className="glass" 
+      className="glass glass-holographic glass-glow" 
       sx={{ 
         py: 2, 
         px: 2,
@@ -187,6 +312,7 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm,
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
+
       }}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -267,9 +393,9 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm,
         {links.map((link: QuickLink, index: number) => {
           const isFavicon = link.icon && (link.icon.startsWith('http') || link.icon.startsWith('data:image'));
           const isEmoji = link.icon && link.icon.length <= 2 && !isFavicon;
-          const bubbleBgColor = isFavicon 
-            ? 'rgba(255, 255, 255, 0.9)' 
-            : (link.color || 'rgba(255, 255, 255, 0.2)');
+          const bubbleBgColor = isFavicon
+            ? 'rgba(255, 255, 255, 0.1)' // More translucent for favicons to blend better
+            : (link.color || 'rgba(255, 255, 255, 0.15)'); // Slightly more opaque base for colored/emoji
           
           const isBeingDragged = draggedItem?.id === link.id && isDragging;
           const isDropTarget = draggedOverIndex === index && isDragging && draggedItem?.id !== link.id;
@@ -339,19 +465,24 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm,
                     width: 52,
                     height: 52,
                     borderRadius: 'var(--radius-md)',
-                    bgcolor: bubbleBgColor,
-                    transition: 'transform 0.2s ease-out, background-color 0.2s ease-out, box-shadow 0.2s ease-out',
+                    bgcolor: isBeingDragged ? 'rgba(255, 255, 255, 0.25)' : bubbleBgColor,
+                    backdropFilter: 'blur(8px) saturate(150%)', // Enhanced glass effect
+                    WebkitBackdropFilter: 'blur(8px) saturate(150%)',
+                    transition: 'transform 0.2s ease-out, background-color 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out',
                     overflow: 'hidden',
-                    border: isFavicon ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
+                    border: isFavicon ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(255, 255, 255, 0.2)', // Subtle border for all
                     position: 'relative',
                     padding: 0,
                     pointerEvents: editMode && isDragging ? 'none' : 'auto',
+                    boxShadow: editMode ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.1)', // Softer shadow + inner highlight
                     '&:hover .delete-button': {
                       opacity: editMode ? 1 : 0.8,
                     },
                     '&:hover': {
                       transform: editMode ? 'none' : 'scale(1.08)',
-                      boxShadow: editMode ? 'none' : '0 4px 10px rgba(0, 0, 0, 0.2)'
+                      boxShadow: editMode ? 'none' : '0 5px 15px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.2)',
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                      backgroundColor: isFavicon ? 'rgba(255, 255, 255, 0.2)' : (link.color || 'rgba(255, 255, 255, 0.25)'),
                     },
                     // Add extra styling for emoji icons to improve rendering
                     ...(isEmoji && {
@@ -402,14 +533,18 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm,
                 width: 52,
                 height: 52,
                 borderRadius: 'var(--radius-md)',
-                bgcolor: 'rgba(255, 255, 255, 0.15)',
+                bgcolor: 'rgba(255, 255, 255, 0.1)', // Consistent with icon style
+                backdropFilter: 'blur(8px) saturate(150%)',
+                WebkitBackdropFilter: 'blur(8px) saturate(150%)',
                 color: 'var(--text-light)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                transition: 'transform 0.2s ease-out, background-color 0.2s ease-out, box-shadow 0.2s ease-out',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
+                transition: 'transform 0.2s ease-out, background-color 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out',
                 '&:hover': {
-                  bgcolor: 'rgba(255, 255, 255, 0.25)',
+                  bgcolor: 'rgba(255, 255, 255, 0.2)',
                   transform: 'scale(1.08)',
-                  boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)'
+                  boxShadow: '0 5px 15px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.2)',
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
                 }
               }}
             >

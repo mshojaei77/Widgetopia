@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { CircularProgress, TextField, InputAdornment } from '@mui/material';
 import Autocomplete from '@mui/material/Autocomplete';
 import SearchIcon from '@mui/icons-material/Search';
-import { motion } from 'framer-motion';
 import debounce from 'lodash.debounce';
 
 const SearchBar: React.FC = () => {
@@ -71,115 +70,53 @@ const SearchBar: React.FC = () => {
       .slice(0, 8);
   };
 
-  const fetchGoogleSuggestions = async (query: string): Promise<string[]> => {
+  // Check if we're in a Chrome extension environment
+  const isExtensionEnvironment = () => {
+    return typeof chrome !== 'undefined' && chrome.search;
+  };
+
+  // Get search suggestions from Chrome API or mock data
+  const getSearchSuggestions = async (query: string): Promise<string[]> => {
+    if (!query.trim()) return [];
+
     try {
-      // In development, use mock data
-      if (process.env.NODE_ENV === 'development' || window.location.protocol === 'http:') {
+      if (isExtensionEnvironment()) {
+        // Use Chrome's search suggestion API if available
+        return new Promise((resolve) => {
+          chrome.search.query({ text: query }, (results) => {
+            if (chrome.runtime.lastError) {
+              console.warn('Chrome search API error:', chrome.runtime.lastError);
+              resolve(getMockSuggestions(query));
+            } else {
+              const suggestions = results?.map(result => result.content || result.description || '') || [];
+              resolve(suggestions.slice(0, 8));
+            }
+          });
+        });
+      } else {
+        // Fallback to mock data for development
         return getMockSuggestions(query);
       }
-      
-      // For production/extension environment, try direct API call
-      const res = await fetch(
-        `https://suggestqueries.google.com/complete/search?client=firefox&hl=en&q=${encodeURIComponent(query)}`
-      );
-      const data = await res.json();
-      return data[1] || [];
     } catch (error) {
-      console.warn('Google suggestions failed, using mock data:', error);
+      console.warn('Error getting search suggestions:', error);
       return getMockSuggestions(query);
     }
   };
 
-  const fetchHistorySuggestions = async (query: string): Promise<string[]> => {
-    try {
-      if (typeof chrome !== 'undefined' && chrome.history) {
-        return new Promise(resolve => {
-          chrome.history.search({ text: query, maxResults: 5 }, results => {
-            resolve(results.map(item => item.title || item.url).filter(Boolean));
-          });
-        });
-      }
-    } catch (error) {
-      console.warn('History suggestions failed:', error);
-    }
-    
-    // Mock history data for development
-    if (process.env.NODE_ENV === 'development' || window.location.protocol === 'http:') {
-      const mockHistory = [
-        'GitHub - Where the world builds software',
-        'Stack Overflow - Where Developers Learn',
-        'MDN Web Docs',
-        'React – A JavaScript library',
-        'YouTube',
-        'Google',
-        'ChatGPT',
-        'Reddit - Dive into anything'
-      ];
-      return mockHistory.filter(item => 
-        item.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 3);
-    }
-    
-    return [];
-  };
-
-  const fetchBookmarksSuggestions = async (query: string): Promise<string[]> => {
-    try {
-      if (typeof chrome !== 'undefined' && chrome.bookmarks) {
-        return new Promise(resolve => {
-          chrome.bookmarks.search(query, results => {
-            resolve(results.map(item => item.title || item.url).filter(Boolean));
-          });
-        });
-      }
-    } catch (error) {
-      console.warn('Bookmarks suggestions failed:', error);
-    }
-    
-    // Mock bookmarks data for development
-    if (process.env.NODE_ENV === 'development' || window.location.protocol === 'http:') {
-      const mockBookmarks = [
-        'React Documentation',
-        'TypeScript Handbook',
-        'Material-UI Components',
-        'VS Code Extensions',
-        'GitHub Repositories',
-        'Stack Overflow Questions'
-      ];
-      return mockBookmarks.filter(item => 
-        item.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 3);
-    }
-    
-    return [];
-  };
-
-  const updateOptions = async (value: string) => {
-    if (!value || value.length < 2) {
+  const updateOptions = async (query: string) => {
+    if (!query.trim()) {
       setOptions([]);
+      setLoading(false);
       return;
     }
-    
+
     setLoading(true);
-    
     try {
-      const [google, history, bookmarks] = await Promise.all([
-        fetchGoogleSuggestions(value),
-        fetchHistorySuggestions(value),
-        fetchBookmarksSuggestions(value),
-      ]);
-      
-      // Merge and deduplicate suggestions
-      const allSuggestions = [...google, ...history, ...bookmarks];
-      const uniqueSuggestions = Array.from(new Set(allSuggestions))
-        .filter(suggestion => suggestion && suggestion.trim().length > 0)
-        .slice(0, 10); // Limit to 10 suggestions
-      
-      setOptions(uniqueSuggestions);
+      const suggestions = await getSearchSuggestions(query);
+      setOptions(suggestions);
     } catch (error) {
       console.error('Error fetching suggestions:', error);
-      // Fallback to mock suggestions
-      setOptions(getMockSuggestions(value));
+      setOptions([]);
     } finally {
       setLoading(false);
     }
@@ -208,58 +145,39 @@ const SearchBar: React.FC = () => {
   };
 
   return (
-    <motion.div
+    <div
       onKeyPress={handleKeyPress}
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, type: 'spring', stiffness: 120 }}
       style={{ width: '100%', maxWidth: 600, marginBottom: 24 }}
     >
       <Autocomplete
         freeSolo
         options={options}
-        inputValue={inputValue}
-        onInputChange={(e, value) => setInputValue(value)}
-        onOpen={() => setIsFocused(true)}
-        onClose={() => setIsFocused(false)}
-        onChange={(event, value) => {
-          if (value) {
-            window.open(
-              `https://www.google.com/search?q=${encodeURIComponent(value)}`,
-              '_blank',
-              'noopener,noreferrer'
-            );
-          }
-        }}
         loading={loading}
-        loadingText="Searching..."
-        noOptionsText="No suggestions found"
-        renderInput={params => (
+        inputValue={inputValue}
+        onInputChange={(event, newInputValue) => {
+          setInputValue(newInputValue);
+        }}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        renderInput={(params) => (
           <TextField
             {...params}
-            placeholder="Search Google..."
-            variant="standard"
+            placeholder="Search the web..."
+            variant="outlined"
+            fullWidth
             InputProps={{
               ...params.InputProps,
               startAdornment: (
-                <>
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'white', opacity: 0.7 }} />
-                  </InputAdornment>
-                  {params.InputProps.startAdornment}
-                </>
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: 'rgba(255,255,255,0.7)' }} />
+                </InputAdornment>
               ),
               endAdornment: (
                 <>
-                  {loading && <CircularProgress color="inherit" size={20} sx={{ mr: 1 }} />}
+                  {loading ? <CircularProgress color="inherit" size={20} /> : null}
                   {params.InputProps.endAdornment}
                 </>
               ),
-              disableUnderline: true,
-              sx: {
-                color: 'white',
-                fontSize: '1rem',
-              },
             }}
             sx={{
               backgroundColor: 'rgba(255,255,255,0.1)',
@@ -309,7 +227,7 @@ const SearchBar: React.FC = () => {
           },
         }}
       />
-    </motion.div>
+    </div>
   );
 };
 

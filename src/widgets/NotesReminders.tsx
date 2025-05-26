@@ -932,7 +932,7 @@ const NotesReminders: React.FC = () => {
   return (
     <Paper
       elevation={0}
-      className="glass"
+      className="glass glass-frosted glass-premium glass-particles"
       sx={{
         p: 3,
         height: '100%',
@@ -941,6 +941,7 @@ const NotesReminders: React.FC = () => {
         borderRadius: 'var(--radius-lg)',
         position: 'relative',
         overflow: 'hidden',
+
       }}
     >
       {/* Header */}
@@ -1480,7 +1481,7 @@ const NotesReminders: React.FC = () => {
                             sx={{
                               '&.Mui-checked': {
                                 '& svg': {
-                                  animation: 'bounce 0.4s'
+                      
                                 }
                               }
                             }}

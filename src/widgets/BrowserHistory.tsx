@@ -213,7 +213,7 @@ const BrowserHistory: React.FC = () => {
   return (
     <Paper
       elevation={0}
-      className="glass"
+      className="glass glass-holographic glass-glow glass-interactive"
       sx={{
         p: 2,
         height: '100%',
@@ -222,6 +222,7 @@ const BrowserHistory: React.FC = () => {
         borderRadius: 'var(--radius-lg)',
         position: 'relative',
         overflow: 'hidden',
+        animation: 'fadeIn 2s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
       {/* Header */}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, CircularProgress, Tooltip, Divider, IconButton } from '@mui/material';
+import { Box, Typography, Paper, Tooltip, Divider, IconButton } from '@mui/material';
+import { CacheAnalytics } from '../utils/CacheAnalytics';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import CloudIcon from '@mui/icons-material/Cloud';
 import AirIcon from '@mui/icons-material/Air'; // For wind
@@ -12,8 +13,71 @@ import CompressIcon from '@mui/icons-material/Compress'; // For pressure
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 
-import { motion } from 'framer-motion';
-import { useRef } from 'react';
+// Weather data cache with expiration (30 minutes)
+class WeatherCache {
+  private static readonly CACHE_KEY = 'weather_data_cache';
+  private static readonly CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+  static async get(location: string): Promise<any | null> {
+    try {
+      const cache = localStorage.getItem(this.CACHE_KEY);
+      if (!cache) return null;
+
+      const cacheData = JSON.parse(cache);
+      const item = cacheData[location.toLowerCase()];
+      
+      if (!item) return null;
+      
+      // Check if cache is expired
+      if (Date.now() - item.timestamp > this.CACHE_EXPIRY) {
+        this.remove(location);
+        return null;
+      }
+      
+      return item.data;
+    } catch (error) {
+      console.warn('Error reading weather cache:', error);
+      return null;
+    }
+  }
+
+  static async set(location: string, data: any): Promise<void> {
+    try {
+      const cache = localStorage.getItem(this.CACHE_KEY);
+      const cacheData = cache ? JSON.parse(cache) : {};
+      
+      cacheData[location.toLowerCase()] = {
+        data,
+        timestamp: Date.now()
+      };
+      
+      localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheData));
+    } catch (error) {
+      console.warn('Error writing to weather cache:', error);
+    }
+  }
+
+  static remove(location: string): void {
+    try {
+      const cache = localStorage.getItem(this.CACHE_KEY);
+      if (!cache) return;
+
+      const cacheData = JSON.parse(cache);
+      delete cacheData[location.toLowerCase()];
+      localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheData));
+    } catch (error) {
+      console.warn('Error removing from weather cache:', error);
+    }
+  }
+
+  static clear(): void {
+    try {
+      localStorage.removeItem(this.CACHE_KEY);
+    } catch (error) {
+      console.warn('Error clearing weather cache:', error);
+    }
+  }
+}
 
 // Open-Meteo API base URLs
 const GEOCODING_API_URL = 'https://geocoding-api.open-meteo.com/v1/search';
@@ -65,46 +129,51 @@ const weatherConditions: { [key: number]: { description: string; icon: React.Rea
   71: { description: 'Slight snow fall', icon: <AcUnitIcon sx={{ fontSize: 60, color: '#e1f5fe' }} /> },
   73: { description: 'Moderate snow fall', icon: <AcUnitIcon sx={{ fontSize: 60, color: '#b3e5fc' }} /> },
   75: { description: 'Heavy snow fall', icon: <AcUnitIcon sx={{ fontSize: 60, color: '#81d4fa' }} /> },
-  77: { description: 'Snow grains', icon: <AcUnitIcon sx={{ fontSize: 60, color: '#e3f2fd' }} /> },
+  77: { description: 'Snow grains', icon: <AcUnitIcon sx={{ fontSize: 60, color: '#e0f2f1' }} /> },
   80: { description: 'Slight rain showers', icon: <GrainIcon sx={{ fontSize: 60, color: '#64b5f6' }} /> },
   81: { description: 'Moderate rain showers', icon: <GrainIcon sx={{ fontSize: 60, color: '#42a5f5' }} /> },
-  82: { description: 'Violent rain showers', icon: <ThunderstormIcon sx={{ fontSize: 60, color: '#1e88e5' }} /> },
+  82: { description: 'Violent rain showers', icon: <GrainIcon sx={{ fontSize: 60, color: '#1976d2' }} /> },
   85: { description: 'Slight snow showers', icon: <AcUnitIcon sx={{ fontSize: 60, color: '#b3e5fc' }} /> },
   86: { description: 'Heavy snow showers', icon: <AcUnitIcon sx={{ fontSize: 60, color: '#81d4fa' }} /> },
-  95: { description: 'Thunderstorm', icon: <ThunderstormIcon sx={{ fontSize: 60, color: '#ffeb3b' }} /> }, // Slight or moderate
-  96: { description: 'Thunderstorm with slight hail', icon: <ThunderstormIcon sx={{ fontSize: 60, color: '#ffee58' }} /> },
-  99: { description: 'Thunderstorm with heavy hail', icon: <ThunderstormIcon sx={{ fontSize: 60, color: '#fdd835' }} /> },
+  95: { description: 'Thunderstorm', icon: <ThunderstormIcon sx={{ fontSize: 60, color: '#9c27b0' }} /> },
+  96: { description: 'Thunderstorm with slight hail', icon: <ThunderstormIcon sx={{ fontSize: 60, color: '#7b1fa2' }} /> },
+  99: { description: 'Thunderstorm with heavy hail', icon: <ThunderstormIcon sx={{ fontSize: 60, color: '#6a1b9a' }} /> },
 };
 
 const Weather: React.FC<WeatherWidgetProps> = ({ location }) => {
   const [weather, setWeather] = useState<WeatherData>({
-    temperature: null,
-    condition: 'Loading...',
+    temperature: 22, // Default temperature
+    condition: 'Clear Sky',
     locationName: location, // Start with the passed location name
-    weatherCode: null,
-    windSpeed: null,
-    humidity: null,
-    pressure: null,
+    weatherCode: 0, // Clear sky code
+    windSpeed: 5,
+    humidity: 65,
+    pressure: 1013,
   });
   const [dailyForecast, setDailyForecast] = useState<DailyForecastData[]>([]); // State for daily forecast
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchWeatherData = async () => {
-      setLoading(true);
       setError(null);
-      setWeather(prev => ({ 
-        ...prev, 
-        condition: 'Loading...', 
-        temperature: null, 
-        weatherCode: null, 
-        windSpeed: null,
-        humidity: null,
-        pressure: null,
-      })); 
-      setDailyForecast([]); // Clear daily forecast
+      
+      // Check cache first for instant loading
+      const cachedData = await WeatherCache.get(location);
+      if (cachedData) {
+        CacheAnalytics.trackCacheHit('weather', 'api');
+        setWeather(cachedData.weather);
+        setDailyForecast(cachedData.dailyForecast || []);
+        // Still fetch fresh data in background but don't block UI
+        fetchFreshWeatherData();
+        return;
+      }
 
+      CacheAnalytics.trackCacheMiss('weather', 'api');
+      // No cache available, fetch fresh data
+      await fetchFreshWeatherData();
+    };
+
+    const fetchFreshWeatherData = async () => {
       try {
         // 1. Get Coordinates from City Name
         const geocodingResponse = await fetch(`${GEOCODING_API_URL}?name=${encodeURIComponent(location)}&count=1&language=en&format=json`);
@@ -142,7 +211,7 @@ const Weather: React.FC<WeatherWidgetProps> = ({ location }) => {
 
         const conditionInfo = weatherConditions[currentConditionCode] || { description: 'Unknown', icon: <CloudIcon sx={{ fontSize: 60, color: 'grey' }} /> };
 
-        setWeather({
+        const newWeatherData = {
           temperature: Math.round(currentTemperature),
           condition: conditionInfo.description,
           locationName: displayLocation,
@@ -150,15 +219,17 @@ const Weather: React.FC<WeatherWidgetProps> = ({ location }) => {
           windSpeed: Math.round(currentWindSpeed),
           humidity: currentHumidity,
           pressure: currentPressureMmHg,
-        });
+        };
+
+        setWeather(newWeatherData);
 
         // 3. Process Daily Forecast Data
+        let newDailyForecast: DailyForecastData[] = [];
         if (weatherData.daily && weatherData.daily.time && weatherData.daily.temperature_2m_max && weatherData.daily.temperature_2m_min && weatherData.daily.weather_code) {
-          const processedDailyForecast: DailyForecastData[] = [];
           // Start from index 1 to skip today (already shown in current weather)
           for (let i = 1; i < weatherData.daily.time.length; i++) {
             const date = new Date(weatherData.daily.time[i] + 'T00:00:00'); // Ensure correct date parsing
-            processedDailyForecast.push({
+            newDailyForecast.push({
               date: weatherData.daily.time[i],
               dayOfWeek: date.toLocaleDateString('en-US', { weekday: 'short' }),
               tempMax: Math.round(weatherData.daily.temperature_2m_max[i]),
@@ -169,15 +240,20 @@ const Weather: React.FC<WeatherWidgetProps> = ({ location }) => {
               temperature: Math.round((weatherData.daily.temperature_2m_max[i] + weatherData.daily.temperature_2m_min[i]) / 2) // Example avg temp
             });
           }
-          setDailyForecast(processedDailyForecast);
         }
+        
+        setDailyForecast(newDailyForecast);
+
+        // Cache the fresh data
+        await WeatherCache.set(location, {
+          weather: newWeatherData,
+          dailyForecast: newDailyForecast
+        });
 
       } catch (err: any) {
         console.error("Failed to fetch weather data:", err);
         setError(err.message || 'Failed to fetch weather data');
         setWeather(prev => ({ ...prev, condition: 'Error', locationName: location })); // Keep original input location on error
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -188,53 +264,15 @@ const Weather: React.FC<WeatherWidgetProps> = ({ location }) => {
   }, [location]); // Re-fetch when location changes
 
   const getWeatherIcon = (code: number | null) => {
-    if (code === null) return <CircularProgress size={50} sx={{ color: 'white' }}/>; // Reduced size
+    if (code === null) return <CloudIcon sx={{ fontSize: 60, color: 'grey' }} />;
 
     const condition = weatherConditions[code];
     if (!condition || !React.isValidElement(condition.icon)) {
-      return <CloudIcon sx={{ fontSize: 60, color: 'grey' }} />; // Default/Unknown icon (reduced size)
+      return <CloudIcon sx={{ fontSize: 60, color: 'grey' }} />; // Default/Unknown icon
     }
 
-    // Apply animation based on condition type (example)
-    let animationProps = {};
-    if (code === 0 || code === 1) { // Sunny/Clear
-      animationProps = {
-        animate: { rotate: [0, 2, 0, -2, 0], scale: [1, 1.03, 1] },
-        transition: { duration: 8, repeat: Infinity, ease: "easeInOut" }
-      };
-    } else if (code >= 51 && code <= 67 || code >= 80 && code <= 82) { // Rain/Drizzle
-      animationProps = {
-        animate: { y: [0, 3, 0, -2, 0] },
-        transition: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
-      };
-    } else if (code >= 71 && code <= 77 || code >= 85 && code <= 86) { // Snow
-      animationProps = {
-        animate: { y: [0, 4, 0], opacity: [1, 0.8, 1] },
-        transition: { duration: 3, repeat: Infinity, ease: "linear" }
-      };
-    } else if (code >= 95 && code <= 99) { // Thunderstorm
-      animationProps = {
-        animate: { scale: [1, 1.02, 1, 0.98, 1], x: [0, 1, -1, 1, 0] },
-        transition: { duration: 0.5, repeat: Infinity, ease: "easeInOut" }
-      };
-     } else if (code === 2 || code === 3) { // Cloudy
-      animationProps = {
-        animate: { x: [0, 4, 0, -4, 0] },
-        transition: { duration: 10, repeat: Infinity, ease: "easeInOut" }
-      };
-    }
-    else { // Default gentle bob for others
-      animationProps = {
-        animate: { y: [0, 2, 0] },
-        transition: { duration: 5, repeat: Infinity, ease: "easeInOut" }
-      };
-    }
-
-    return (
-      <motion.div {...animationProps}>
-        {condition.icon}
-      </motion.div>
-    );
+    // Return static icon for instant loading
+    return condition.icon;
   };
 
   // Function to get smaller icon for daily forecast
@@ -265,7 +303,7 @@ const Weather: React.FC<WeatherWidgetProps> = ({ location }) => {
   return (
     <Paper 
       elevation={0} 
-      className="glass" 
+      className="glass glass-premium glass-particles glass-morph" 
       sx={{ 
         p: 1.5, // Reduced padding
         height: '100%',
@@ -280,12 +318,7 @@ const Weather: React.FC<WeatherWidgetProps> = ({ location }) => {
     >
       {/* REMOVED Title Typography component */}
       
-      {loading ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexGrow: 1 }}>
-          <CircularProgress size={30} sx={{ color: 'white' }} /> {/* Smaller loader */}
-          <Typography variant="caption" sx={{ mt: 1, color: 'rgba(255,255,255,0.7)' }}>Fetching...</Typography> {/* Smaller text */}
-        </Box>
-      ) : error ? (
+      {error ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexGrow: 1, textAlign: 'center', px: 1 }}>
           <Typography color="error" variant="caption" sx={{ mb: 0.5 }}>{error}</Typography> {/* Smaller text */}
           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>Check location</Typography> {/* Shorter text */}
@@ -302,65 +335,43 @@ const Weather: React.FC<WeatherWidgetProps> = ({ location }) => {
         }}>
           {/* Main Weather Info */}
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', mb: 0 }}> {/* Removed margin bottom */}
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5 }}
-            >
+            <Box>
               {/* Adjust icon size directly in getWeatherIcon/weatherConditions if needed, or keep dynamic */}
               {getWeatherIcon(weather.weatherCode)} 
-            </motion.div>
+            </Box>
             
-            <motion.div
-              initial={{ y: 15, opacity: 0 }} // Reduced animation distance
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.1, duration: 0.4 }} // Faster animation
-            >
-              <Typography variant="h2" sx={{ // Use h2 but adjust style
-                fontSize: '2.8rem', // Significantly reduced font size
-                fontWeight: 500,
-                mt: 0.5, // Increased margin top slightly
-                mb: 0.2, // Added small margin bottom
-                textShadow: '0 1px 5px rgba(0,0,0,0.3)', // Adjusted shadow
-                letterSpacing: '-1.5px' // Adjusted spacing
-              }}>
-                {weather.temperature !== null ? `${weather.temperature}°C` : '--'}
-              </Typography>
-            </motion.div>
+            <Typography variant="h2" sx={{ // Use h2 but adjust style
+              fontSize: '2.8rem', // Significantly reduced font size
+              fontWeight: 500,
+              mt: 0.5, // Increased margin top slightly
+              mb: 0.2, // Added small margin bottom
+              textShadow: '0 1px 5px rgba(0,0,0,0.3)', // Adjusted shadow
+              letterSpacing: '-1.5px' // Adjusted spacing
+            }}>
+              {weather.temperature !== null ? `${weather.temperature}°C` : '--'}
+            </Typography>
             
-            <motion.div
-              initial={{ y: 15, opacity: 0 }} // Reduced animation distance
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.4 }} // Faster animation
-            >
-              <Typography variant="body1" sx={{ // Use body1 but adjust style
-                fontSize: '0.9rem', // Reduced font size
-                minHeight: 'auto', // Remove minHeight
-                opacity: 0.9,
-                mb: 0.5, // Increased margin bottom
-                fontWeight: 400,
-                letterSpacing: '0.5px' // Adjusted spacing
-              }}>
-                {weather.condition}
-              </Typography>
-            </motion.div>
+            <Typography variant="body1" sx={{ // Use body1 but adjust style
+              fontSize: '0.9rem', // Reduced font size
+              minHeight: 'auto', // Remove minHeight
+              opacity: 0.9,
+              mb: 0.5, // Increased margin bottom
+              fontWeight: 400,
+              letterSpacing: '0.5px' // Adjusted spacing
+            }}>
+              {weather.condition}
+            </Typography>
             
-            <motion.div
-              initial={{ y: 15, opacity: 0 }} // Reduced animation distance
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.4 }} // Faster animation
-            >
-              <Typography variant="body2" sx={{ // Use body2
-                fontSize: '0.75rem', // Reduced font size
-                minHeight: 'auto', // Remove minHeight
-                opacity: 0.75,
-                fontWeight: 300,
-                textAlign: 'center', // Center location name if long
-                lineHeight: 1.2, // Adjust line height
-              }}>
-                {weather.locationName}
-              </Typography>
-            </motion.div>
+            <Typography variant="body2" sx={{ // Use body2
+              fontSize: '0.75rem', // Reduced font size
+              minHeight: 'auto', // Remove minHeight
+              opacity: 0.75,
+              fontWeight: 300,
+              textAlign: 'center', // Center location name if long
+              lineHeight: 1.2, // Adjust line height
+            }}>
+              {weather.locationName}
+            </Typography>
           </Box>
 
           {/* Details Row */}
@@ -377,92 +388,80 @@ const Weather: React.FC<WeatherWidgetProps> = ({ location }) => {
               flexWrap: 'wrap', // Allow wrapping if needed
             }}
           >
-            {/* Wind Speed */}          
-            {weather.windSpeed !== null && (
-              <motion.div
-                initial={{ y: 10, opacity: 0 }} // Reduced animation distance
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4, duration: 0.3 }} // Faster animation
-              >
-                <Tooltip title="Wind Speed" placement="top">
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <AirIcon sx={{ fontSize: 14, mr: 0.3 }}/> {/* Smaller icon/margin */}
-                    <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 300 }}> {/* Smaller font */}
-                      {`${weather.windSpeed} km/h`}
-                    </Typography>
-                  </Box>
-                </Tooltip>
-              </motion.div>
-            )}
-            {/* Humidity */}          
-            {weather.humidity !== null && (
-              <motion.div
-                initial={{ y: 10, opacity: 0 }} // Reduced animation distance
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.5, duration: 0.3 }} // Faster animation
-              >
-                <Tooltip title="Humidity" placement="top">
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <OpacityIcon sx={{ fontSize: 14, mr: 0.3 }}/> {/* Smaller icon/margin */}
-                    <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 300 }}> {/* Smaller font */}
-                      {`${weather.humidity}%`}
-                    </Typography>
-                  </Box>
-                </Tooltip>
-              </motion.div>
-            )}
-            {/* Pressure */}          
-            {weather.pressure !== null && (
-              <motion.div
-                initial={{ y: 10, opacity: 0 }} // Reduced animation distance
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.6, duration: 0.3 }} // Faster animation
-              >
-                <Tooltip title="Pressure" placement="top">
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <CompressIcon sx={{ fontSize: 14, mr: 0.3 }}/> {/* Smaller icon/margin */}
-                    <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 300 }}> {/* Smaller font */}
-                      {`${weather.pressure} mmHg`}
-                    </Typography>
-                  </Box>
-                </Tooltip>
-              </motion.div>
-            )}
+            {/* Wind */}
+            <Tooltip title={`Wind: ${weather.windSpeed} km/h`}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                <AirIcon sx={{ fontSize: 14, opacity: 0.7 }} />
+                <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
+                  {weather.windSpeed}
+                </Typography>
+              </Box>
+            </Tooltip>
+
+            {/* Humidity */}
+            <Tooltip title={`Humidity: ${weather.humidity}%`}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                <OpacityIcon sx={{ fontSize: 14, opacity: 0.7 }} />
+                <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
+                  {weather.humidity}%
+                </Typography>
+              </Box>
+            </Tooltip>
+
+            {/* Pressure */}
+            <Tooltip title={`Pressure: ${weather.pressure} mmHg`}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                <CompressIcon sx={{ fontSize: 14, opacity: 0.7 }} />
+                <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
+                  {weather.pressure}
+                </Typography>
+              </Box>
+            </Tooltip>
           </Box>
 
-          {/* Bottom Section: Daily Forecast */}
+          {/* Daily Forecast - Compact */}
           {dailyForecast.length > 0 && (
-            <Box sx={{ width: '100%', mt: 1, pt: 0.5 }}> {/* Increased top margin */}
-              <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)', my: 0.5 }} /> {/* Increased margin */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-around', // Distribute days evenly
-                  alignItems: 'flex-start', // Align items to top
-                  pb: 0, // Removed padding bottom
-                }}
-              >
-                {dailyForecast.map((day, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 5 }} // Reduced animation distance
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.7 + index * 0.05, duration: 0.3 }} // Faster animation
-                  >
-                    <Box sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      px: 0.5, // Reduced padding
+            <>
+              <Divider sx={{ width: '100%', my: 0.5, bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                width: '100%', 
+                px: 0.5,
+                gap: 0.5, // Reduced gap
+                overflow: 'hidden' // Prevent overflow
+              }}>
+                {dailyForecast.slice(0, 4).map((day, index) => ( // Show only first 4 days
+                  <Box key={day.date} sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center',
+                    flex: 1, // Equal width distribution
+                    minWidth: 0 // Allow shrinking
+                  }}>
+                    <Typography variant="caption" sx={{ 
+                      fontSize: '0.65rem', 
+                      opacity: 0.7, 
+                      mb: 0.2,
                       textAlign: 'center'
                     }}>
-                      <Typography variant="caption" sx={{ fontSize: '0.65rem', opacity: 0.8, mb: 0.4, fontWeight: 500 }}>{day.dayOfWeek}</Typography> {/* Smaller font, increased margin */}
-                      <Box sx={{ height: 24, mb: 0.3 }}>{getSmallIcon(day.weatherCode)}</Box> {/* Use renamed function, adjusted height, increased margin */}
+                      {day.dayOfWeek}
+                    </Typography>
+                    <Box sx={{ mb: 0.2 }}>
+                      {getSmallIcon(day.weatherCode)}
                     </Box>
-                  </motion.div>
+                    <Typography variant="caption" sx={{ 
+                      fontSize: '0.65rem', 
+                      fontWeight: 500,
+                      textAlign: 'center',
+                      lineHeight: 1
+                    }}>
+                      {day.tempMax}°/{day.tempMin}°
+                    </Typography>
+                  </Box>
                 ))}
               </Box>
-            </Box>
+            </>
           )}
         </Box>
       )}
@@ -470,4 +469,4 @@ const Weather: React.FC<WeatherWidgetProps> = ({ location }) => {
   );
 };
 
-export default Weather; 
+export default Weather;

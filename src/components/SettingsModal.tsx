@@ -39,14 +39,19 @@ interface TabPanelProps {
 // Available wallpapers (these will be stored in public/wallpapers)
 const WALLPAPERS = [
   { id: 'default', name: 'Default', path: '/wallpapers/default.jpg' },
-  { id: 'forest', name: 'Forest', path: '/wallpapers/forest.jpg' },
-  { id: 'mountains', name: 'Mountains', path: '/wallpapers/mountains.jpg' },
-  { id: 'ocean', name: 'Ocean', path: '/wallpapers/ocean.jpg' },
-  { id: 'night', name: 'Night Sky', path: '/wallpapers/night.jpg' },
   { id: 'nature', name: 'Nature', path: '/wallpapers/nature.jpg' },
   { id: 'anime', name: 'Anime', path: '/wallpapers/anime.jpeg' },
   { id: 'tea', name: 'Tea', path: '/wallpapers/tea.jpg' },
   { id: 'shiraz1', name: 'Shiraz', path: '/wallpapers/shiraz1.jpg' },
+  { id: 'sunset', name: 'Sunset', path: '/wallpapers/sunset.jpg' },
+  { id: 'heaven', name: 'Heaven', path: '/wallpapers/heaven.jpg' },
+  { id: 'anime_cat', name: 'Anime Cat', path: '/wallpapers/anime_cat.jpg' },
+  { id: 'anime_girl', name: 'Anime Girl', path: '/wallpapers/anime_girl.jpg' },
+  { id: 'starrynight', name: 'Starry Night', path: '/wallpapers/starrynight.jpg' },
+  { id: 'knight', name: 'Knight', path: '/wallpapers/knight.jpg' },
+  { id: 'arcane', name: 'Arcane', path: '/wallpapers/arcane.png' },
+  { id: 'rdr', name: 'Red Dead Redemption', path: '/wallpapers/RDR.png' },
+  { id: 'cosmiccliffs', name: 'Cosmic Cliffs', path: '/wallpapers/CosmicCliffs.png' },
 ];
 
 function TabPanel(props: TabPanelProps) {

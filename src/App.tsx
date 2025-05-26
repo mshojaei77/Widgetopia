@@ -86,14 +86,24 @@ const WidgetWrapper = React.memo<WidgetWrapperProps>(({ widget, widgetProps, edi
     <Box sx={{ 
       height: '100%', 
       position: 'relative',
-      border: editMode ? '2px dashed rgba(255, 255, 255, 0.3)' : 'none',
-      borderRadius: '8px',
+      border: editMode ? '2px dashed rgba(138, 180, 248, 0.6)' : 'none',
+      borderRadius: 'var(--radius-lg)',
       overflow: 'hidden',
+      background: editMode ? 'linear-gradient(135deg, rgba(138, 180, 248, 0.05) 0%, rgba(197, 138, 249, 0.05) 100%)' : 'transparent',
+      boxShadow: editMode ? '0 0 20px rgba(138, 180, 248, 0.2), inset 0 0 20px rgba(138, 180, 248, 0.1)' : 'none',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       // Ensure resize handles are not blocked
       '& .react-resizable-handle': {
-        zIndex: 15, // Higher than other elements
-        opacity: editMode ? 1 : 0, // Only show in edit mode
-        transition: 'opacity 0.2s ease'
+        zIndex: 15,
+        opacity: editMode ? 1 : 0,
+        transition: 'opacity 0.3s ease',
+        background: editMode ? 'linear-gradient(45deg, rgba(138, 180, 248, 0.8), rgba(197, 138, 249, 0.8))' : 'transparent',
+        borderRadius: '50%',
+        '&:hover': {
+          background: editMode ? 'linear-gradient(45deg, rgba(138, 180, 248, 1), rgba(197, 138, 249, 1))' : 'transparent',
+          transform: 'scale(1.2)',
+          boxShadow: '0 0 15px rgba(138, 180, 248, 0.6)'
+        }
       }
     }}>
       {editMode && (
@@ -104,8 +114,8 @@ const WidgetWrapper = React.memo<WidgetWrapperProps>(({ widget, widgetProps, edi
             top: 0,
             left: 0,
             right: 0,
-            height: '32px', // Fixed height
-            backgroundColor: 'rgba(15, 15, 20, 0.7)',
+            height: '32px',
+            background: 'linear-gradient(135deg, rgba(138, 180, 248, 0.9) 0%, rgba(197, 138, 249, 0.9) 100%)',
             color: 'white',
             padding: '4px 8px',
             display: 'flex',
@@ -113,8 +123,23 @@ const WidgetWrapper = React.memo<WidgetWrapperProps>(({ widget, widgetProps, edi
             alignItems: 'center',
             fontSize: '0.8rem',
             zIndex: 12,
-            backdropFilter: 'blur(4px)',
-            cursor: 'move'
+            backdropFilter: 'blur(8px) saturate(1.2)',
+            WebkitBackdropFilter: 'blur(8px) saturate(1.2)',
+            cursor: 'move',
+            borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
+            boxShadow: 
+              '0 4px 15px rgba(138, 180, 248, 0.3), ' +
+              'inset 0 1px 0 rgba(255, 255, 255, 0.3), ' +
+              'inset 0 -1px 0 rgba(0, 0, 0, 0.1)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, rgba(138, 180, 248, 1) 0%, rgba(197, 138, 249, 1) 100%)',
+              transform: 'translateY(-1px)',
+              boxShadow: 
+                '0 6px 20px rgba(138, 180, 248, 0.4), ' +
+                'inset 0 1px 0 rgba(255, 255, 255, 0.4), ' +
+                'inset 0 -1px 0 rgba(0, 0, 0, 0.1)'
+            }
           }}>
             <DragIndicatorIcon fontSize="small" />
             <Typography variant="caption">{widget.name}</Typography>
@@ -173,8 +198,7 @@ const WidgetWrapper = React.memo<WidgetWrapperProps>(({ widget, widgetProps, edi
 
 // Create a country flag component based on IP
 const CountryFlag = () => {
-  const [countryCode, setCountryCode] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(true);
+  const [countryCode, setCountryCode] = useState<string>('us'); // Default to US
   const [useDefaultFlag, setUseDefaultFlag] = useState<boolean>(false);
 
   useEffect(() => {
@@ -198,35 +222,12 @@ const CountryFlag = () => {
         console.error('Error fetching country from IP:', error);
         // Use default flag instead of 'us'
         setUseDefaultFlag(true);
-      } finally {
-        setLoading(false);
       }
     };
 
+    // Fetch country in background without blocking UI
     fetchCountry();
   }, []);
-
-  if (loading) {
-    return (
-      <Box sx={{
-        position: 'absolute',
-        top: 16,
-        left: 16,
-        width: 40,
-        height: 40,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(15, 15, 20, 0.5)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: '50%',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-        border: '1px solid rgba(255, 255, 255, 0.1)'
-      }}>
-        <Box sx={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }}/>
-      </Box>
-    );
-  }
 
   return (
     <Tooltip title={`IP location: ${countryCode.toUpperCase()}`}>
@@ -506,7 +507,7 @@ const App = () => {
       music:          { i: 'music',          x: 0,  y: 8,  w: 3, h: 10 },
       github:         { i: 'github',         x: 9,  y: 12, w: 3, h: 7 },
       timer:          { i: 'timer',          x: 6,  y: 18, w: 3, h: 8 },
-      browserhistory: { i: 'browserhistory', x: 9,  y: 19, w: 3, h: 10 },
+      browserhistory: { i: 'browserhistory', x: 9,  y: 19, w: 3, h: 11 },
     };
   });
 
@@ -661,14 +662,17 @@ const App = () => {
     const getAllWallpapers = () => {
       const defaultWallpapers = [
         '/wallpapers/default.jpg',
-        '/wallpapers/forest.jpg',
-        '/wallpapers/mountains.jpg',
-        '/wallpapers/ocean.jpg',
-        '/wallpapers/night.jpg',
         '/wallpapers/nature.jpg',
         '/wallpapers/anime.jpeg',
         '/wallpapers/tea.jpg',
         '/wallpapers/shiraz1.jpg',
+        '/wallpapers/sunset.jpg',
+        '/wallpapers/heaven.jpg',
+        '/wallpapers/anime_cat.jpg',
+        '/wallpapers/anime_girl.jpg',
+        '/wallpapers/knight.jpg',
+        '/wallpapers/arcane.png',
+        '/wallpapers/RDR.png',
       ];
       // Filter out hidden default wallpapers
       const visibleDefaultWallpapers = defaultWallpapers.filter(
@@ -1082,14 +1086,17 @@ const App = () => {
       if (currentWallpaper === wallpaperToDelete) {
         const defaultWallpapers = [
           '/wallpapers/default.jpg',
-          '/wallpapers/forest.jpg',
-          '/wallpapers/mountains.jpg',
-          '/wallpapers/ocean.jpg',
-          '/wallpapers/night.jpg',
           '/wallpapers/nature.jpg',
           '/wallpapers/anime.jpeg',
           '/wallpapers/tea.jpg',
           '/wallpapers/shiraz1.jpg',
+          '/wallpapers/sunset.jpg',
+          '/wallpapers/heaven.jpg',
+          '/wallpapers/anime_cat.jpg',
+          '/wallpapers/anime_girl.jpg',
+          '/wallpapers/knight.jpg',
+          '/wallpapers/arcane.png',
+          '/wallpapers/RDR.png',
         ];
         // Filter out hidden default wallpapers (including the one being deleted)
         const visibleDefaultWallpapers = defaultWallpapers.filter(

@@ -172,7 +172,7 @@ const Github: React.FC = () => {
   return (
     <Paper 
       elevation={0} 
-      className="glass" 
+      className="glass glass-frosted glass-premium" 
       sx={{ 
         p: 2, 
         height: '100%',
@@ -181,8 +181,7 @@ const Github: React.FC = () => {
         borderRadius: 'var(--radius-lg)',
         position: 'relative',
         overflow: 'hidden',
-        backdropFilter: 'blur(10px)',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.1)'
+        animation: 'fadeIn 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
       <Box sx={{ 
