@@ -18,5 +18,11 @@
     },
     "default_title": "Widgetopia"
   },
-  "permissions": ["storage", "history"]
+  "permissions": ["storage", "history", "identity"],
+  "host_permissions": [
+    "https://www.googleapis.com/*",
+    "https://api.telegram.org/*",
+    "https://accounts.google.com/*",
+    "https://oauth2.googleapis.com/*"
+  ]
 } 

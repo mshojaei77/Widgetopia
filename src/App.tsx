@@ -32,6 +32,7 @@ import RSS from './widgets/RSS'; // Import the RSS widget
 import Github from './widgets/Github'; // Import the GitHub widget
 import Timer from './widgets/Timer'; // Import the Timer widget
 import BrowserHistory from './widgets/BrowserHistory'; // Import the BrowserHistory widget
+import NotesReminders from './widgets/NotesReminders'; // Import the NotesReminders widget
 
 // import './App.css'; // Removed as file doesn't exist
 
@@ -313,6 +314,7 @@ const App = () => {
     { id: 'github', name: 'GitHub Contributions', component: Github }, // Add GitHub widget
     { id: 'timer', name: 'Working Timer', component: Timer }, // Add Timer widget
     { id: 'browserhistory', name: 'Browser History', component: BrowserHistory }, // Add BrowserHistory widget
+    { id: 'notesreminders', name: 'Notes & Reminders', component: NotesReminders }, // Add NotesReminders widget
   ];
 
   // Widget Visibility State
@@ -333,6 +335,7 @@ const App = () => {
       github: true,
       timer: true,
       browserhistory: false, // Browser History widget - default off
+      notesreminders: true, // Notes & Reminders widget - default on
     };
   });
 
@@ -442,6 +445,7 @@ const App = () => {
       rss:        { i: 'rss',        x: 9,  y: 5,  w: 3, h: 10 },
       github:     { i: 'github',     x: 3,  y: 13, w: 6, h: 6 },
       browserhistory: { i: 'browserhistory', x: 0, y: 18, w: 4, h: 10 }, // Browser History widget
+      notesreminders: { i: 'notesreminders', x: 0, y: 18, w: 6, h: 12 }, // Notes & Reminders widget
     };
   });
 

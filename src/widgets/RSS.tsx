@@ -16,6 +16,7 @@ interface RssItem {
   link: string;
   pubDate?: string;
   description?: string;
+  feedSource?: string; // Add source feed info for merged view
 }
 
 interface RssFeed {
@@ -24,7 +25,22 @@ interface RssFeed {
   title?: string;
 }
 
-const DEFAULT_RSS_FEED = 'https://www.testingcatalog.com/rss/';
+// Array of robust, popular default RSS feeds
+const DEFAULT_RSS_FEEDS: RssFeed[] = [
+  { id: '1', url: 'https://www.testingcatalog.com/rss/', title: 'Testing Catalog - AI News' },
+  { id: '2', url: 'https://techcrunch.com/feed/', title: 'TechCrunch - Technology News & Startups' },
+  { id: '3', url: 'https://www.wired.com/feed/rss', title: 'WIRED - Technology, Science & Culture' },
+  { id: '4', url: 'https://feeds.arstechnica.com/arstechnica/index', title: 'Ars Technica - Technology Analysis' },
+  { id: '5', url: 'https://stackoverflow.blog/feed', title: 'Stack Overflow Blog - Developer Insights' },
+  { id: '6', url: 'https://feeds.ign.com/ign/games-all', title: 'IGN - Gaming News & Reviews' },
+  { id: '7', url: 'https://www.polygon.com/rss/index.xml', title: 'Polygon - Gaming Culture' },
+  { id: '8', url: 'https://lifehacker.com/rss', title: 'Lifehacker - Productivity & Life Tips' },
+  { id: '9', url: 'https://www.theverge.com/rss/index.xml', title: 'The Verge - Technology & Digital Culture' },
+  { id: '10', url: 'https://www.ksat.com/arc/outboundfeeds/rss/category/news/?outputType=xml&size=10', title: 'Ksat - News' },
+  { id: '11', url: 'https://faroutmagazine.co.uk/feed/', title: 'Far Out Magazine - Music, Culture & Lifestyle' },
+  { id: '12', url: 'https://theplaylist.net/feed/', title: 'The Playlist - Music, Culture & Lifestyle' },
+  { id: '13', url: 'https://feeds.feedburner.com/variety/headlines', title: 'Variety - Entertainment News' },
+];
 
 const RSS: React.FC = () => {
   const [feeds, setFeeds] = useState<RssFeed[]>(() => {
@@ -32,9 +48,9 @@ const RSS: React.FC = () => {
     if (savedFeeds) {
       const parsedFeeds = JSON.parse(savedFeeds);
       // Ensure at least one feed exists
-      return parsedFeeds.length > 0 ? parsedFeeds : [{ id: '1', url: DEFAULT_RSS_FEED, title: 'Default Feed' }];
+      return parsedFeeds.length > 0 ? parsedFeeds : DEFAULT_RSS_FEEDS;
     }
-    return [{ id: '1', url: DEFAULT_RSS_FEED, title: 'Default Feed' }];
+    return DEFAULT_RSS_FEEDS;
   });
 
   const [newFeedUrl, setNewFeedUrl] = useState('');
@@ -42,13 +58,24 @@ const RSS: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Use state for active feed, load from storage or default to first feed
+  // Use state for active feed, load from storage or default to "all" feeds
   const [activeFeed, setActiveFeed] = useState<string>(() => {
     const savedActiveFeed = localStorage.getItem('activeRssFeedId');
-    const firstFeedId = feeds.length > 0 ? feeds[0].id : null;
-    // Check if saved feed ID still exists in the feeds list
-    const savedFeedExists = feeds.some(f => f.id === savedActiveFeed);
-    return savedActiveFeed && savedFeedExists ? savedActiveFeed : firstFeedId || '';
+    // Check if saved feed ID still exists in the feeds list or is "all"
+    const savedFeedExists = feeds.some(f => f.id === savedActiveFeed) || savedActiveFeed === 'all';
+    
+    if (savedActiveFeed && savedFeedExists) {
+      return savedActiveFeed;
+    }
+    
+    // Default to "all" if there are multiple feeds, otherwise use the first feed
+    if (feeds.length > 1) {
+      return 'all';
+    } else if (feeds.length === 1) {
+      return feeds[0].id;
+    }
+    
+    return '';
   });
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -67,10 +94,15 @@ const RSS: React.FC = () => {
 
   // Fetch RSS feed when activeFeed changes or component mounts
   useEffect(() => {
-    if (activeFeed) {
+    if (activeFeed === 'all') {
+      fetchAllFeeds();
+    } else if (activeFeed) {
       fetchRssFeed(activeFeed);
-    } else if (feeds.length > 0) {
-      // If no active feed is set (e.g., first load, or deleted active), set to first feed
+    } else if (feeds.length > 1) {
+      // If no active feed is set and there are multiple feeds, default to "all"
+      setActiveFeed('all');
+    } else if (feeds.length === 1) {
+      // If only one feed, set to that feed
       setActiveFeed(feeds[0].id);
     } else {
       // No feeds available
@@ -81,6 +113,85 @@ const RSS: React.FC = () => {
     // Intentionally omitting feeds from dependency array to avoid loop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFeed]); // Only refetch when activeFeed changes
+
+  const fetchAllFeeds = async () => {
+    setLoading(true);
+    setError(null);
+    setActiveFeed('all'); // Ensure activeFeed state is updated
+
+    if (feeds.length === 0) {
+      setFeedItems([]);
+      setLoading(false);
+      setError("No RSS feeds available to merge.");
+      return;
+    }
+
+    try {
+      // Fetch all feeds concurrently
+      const feedPromises = feeds.map(async (feed) => {
+        try {
+          const response = await fetch(
+            `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`
+          );
+
+          if (!response.ok) {
+            console.warn(`Failed to fetch feed ${feed.title || feed.url}: HTTP ${response.status}`);
+            return { feed, items: [] };
+          }
+
+          const data = await response.json();
+
+          if (data.status !== 'ok') {
+            console.warn(`Error parsing feed ${feed.title || feed.url}: ${data.message}`);
+            return { feed, items: [] };
+          }
+
+          // Update feed title if not already set or different
+          if (data.feed?.title && (!feed.title || feed.title !== data.feed.title)) {
+            setFeeds(prev =>
+              prev.map(f => f.id === feed.id ? { ...f, title: data.feed.title } : f)
+            );
+          }
+
+          return {
+            feed,
+            items: data.items.map((item: any) => ({
+              title: item.title,
+              link: item.link,
+              pubDate: new Date(item.pubDate).toLocaleString(),
+              description: item.description,
+              feedSource: feed.title || feed.url
+            }))
+          };
+        } catch (err) {
+          console.warn(`Error fetching feed ${feed.title || feed.url}:`, err);
+          return { feed, items: [] };
+        }
+      });
+
+      const results = await Promise.all(feedPromises);
+      
+      // Combine all items and sort by publication date (newest first)
+      const allItems = results.flatMap(result => result.items);
+      const sortedItems = allItems.sort((a, b) => {
+        const dateA = new Date(a.pubDate || 0).getTime();
+        const dateB = new Date(b.pubDate || 0).getTime();
+        return dateB - dateA; // Newest first
+      });
+
+      setFeedItems(sortedItems);
+
+      if (sortedItems.length === 0) {
+        setError("No articles found in any of the RSS feeds.");
+      }
+    } catch (err) {
+      console.error('Error fetching merged RSS feeds:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch RSS feeds');
+      setFeedItems([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchRssFeed = async (feedId: string) => {
     setLoading(true);
@@ -158,11 +269,13 @@ const RSS: React.FC = () => {
   const handleDeleteFeed = (idToDelete: string) => {
     setFeeds(prev => prev.filter(feed => feed.id !== idToDelete));
 
-    // If we deleted the active feed, switch to the first available feed (if any)
+    // If we deleted the active feed, switch to appropriate default
     if (activeFeed === idToDelete) {
-      const nextFeed = feeds.find(f => f.id !== idToDelete); // Find the first remaining feed
-      if (nextFeed) {
-        setActiveFeed(nextFeed.id); // Fetch this next feed
+      const remainingFeeds = feeds.filter(f => f.id !== idToDelete);
+      if (remainingFeeds.length > 1) {
+        setActiveFeed('all'); // Default to "all" if multiple feeds remain
+      } else if (remainingFeeds.length === 1) {
+        setActiveFeed(remainingFeeds[0].id); // Switch to the only remaining feed
       } else {
         // No feeds left
         setActiveFeed(''); // Clear active feed
@@ -174,7 +287,9 @@ const RSS: React.FC = () => {
   };
 
   const handleRefresh = () => {
-    if (activeFeed) {
+    if (activeFeed === 'all') {
+      fetchAllFeeds();
+    } else if (activeFeed) {
       fetchRssFeed(activeFeed);
     }
   };
@@ -229,6 +344,13 @@ const RSS: React.FC = () => {
             }}
           >
             {feeds.length === 0 && <MenuItem value="" disabled>No feeds available</MenuItem>}
+            {feeds.length > 1 && (
+              <MenuItem value="all">
+                <Box sx={{ display: 'flex', alignItems: 'center', fontWeight: 600 }}>
+                  📰 All Feeds ({feeds.length})
+                </Box>
+              </MenuItem>
+            )}
             {feeds.map((feed) => (
               <MenuItem key={feed.id} value={feed.id}>
                 {getFeedDisplayName(feed)}
@@ -303,16 +425,32 @@ const RSS: React.FC = () => {
                     }
                     secondary={
                       <>
+                        {activeFeed === 'all' && item.feedSource && (
+                          <Chip
+                            label={item.feedSource}
+                            size="small"
+                            sx={{
+                              height: 20,
+                              fontSize: '0.7rem',
+                              bgcolor: 'rgba(255, 255, 255, 0.1)',
+                              color: 'rgba(255, 255, 255, 0.8)',
+                              mb: 0.5,
+                              '& .MuiChip-label': { px: 1 }
+                            }}
+                          />
+                        )}
                         {item.description && (
                           <Typography component="div" variant="body2" sx={{ opacity: 0.8, mt: 0.5 }}>
                             {formatDescription(item.description)}
                           </Typography>
                         )}
-                        {item.pubDate && (
-                          <Typography component="div" variant="caption" sx={{ display: 'block', mt: 0.5, opacity: 0.6 }}>
-                            {item.pubDate}
-                          </Typography>
-                        )}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
+                          {item.pubDate && (
+                            <Typography component="div" variant="caption" sx={{ opacity: 0.6 }}>
+                              {item.pubDate}
+                            </Typography>
+                          )}
+                        </Box>
                       </>
                     }
                     secondaryTypographyProps={{ component: 'div' }}
