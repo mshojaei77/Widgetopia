@@ -332,6 +332,11 @@ const App = () => {
     return stored ? JSON.parse(stored) : [];
   });
 
+  const [hiddenDefaultWallpapers, setHiddenDefaultWallpapers] = useState<string[]>(() => {
+    const stored = localStorage.getItem('hiddenDefaultWallpapers');
+    return stored ? JSON.parse(stored) : [];
+  });
+
   const [wallpaperShuffle, setWallpaperShuffle] = useState<boolean>(() => {
     const stored = localStorage.getItem('wallpaperShuffle');
     return stored ? JSON.parse(stored) : false;
@@ -644,6 +649,11 @@ const App = () => {
     localStorage.setItem('customWallpapers', JSON.stringify(customWallpapers));
   }, [customWallpapers]);
 
+  // Persist hidden default wallpapers
+  useEffect(() => {
+    localStorage.setItem('hiddenDefaultWallpapers', JSON.stringify(hiddenDefaultWallpapers));
+  }, [hiddenDefaultWallpapers]);
+
   // Auto-change wallpaper every hour when shuffle is enabled
   useEffect(() => {
     if (!wallpaperShuffle) return;
@@ -660,7 +670,11 @@ const App = () => {
         '/wallpapers/tea.jpg',
         '/wallpapers/shiraz1.jpg',
       ];
-      return [...defaultWallpapers, ...customWallpapers];
+      // Filter out hidden default wallpapers
+      const visibleDefaultWallpapers = defaultWallpapers.filter(
+        wallpaper => !hiddenDefaultWallpapers.includes(wallpaper)
+      );
+      return [...visibleDefaultWallpapers, ...customWallpapers];
     };
 
     const shuffleWallpaper = () => {
@@ -1060,6 +1074,48 @@ const App = () => {
     setSnackbarOpen(true);
   }, []);
 
+  const handleDeleteDefaultWallpaper = useCallback((wallpaperToDelete: string) => {
+    setHiddenDefaultWallpapers(prev => {
+      const updated = [...prev, wallpaperToDelete];
+      
+      // If the deleted wallpaper was the current one, switch to a visible wallpaper
+      if (currentWallpaper === wallpaperToDelete) {
+        const defaultWallpapers = [
+          '/wallpapers/default.jpg',
+          '/wallpapers/forest.jpg',
+          '/wallpapers/mountains.jpg',
+          '/wallpapers/ocean.jpg',
+          '/wallpapers/night.jpg',
+          '/wallpapers/nature.jpg',
+          '/wallpapers/anime.jpeg',
+          '/wallpapers/tea.jpg',
+          '/wallpapers/shiraz1.jpg',
+        ];
+        // Filter out hidden default wallpapers (including the one being deleted)
+        const visibleDefaultWallpapers = defaultWallpapers.filter(
+          (wallpaper: string) => !updated.includes(wallpaper)
+        );
+        const allWallpapers = [...visibleDefaultWallpapers, ...customWallpapers];
+        
+        if (allWallpapers.length > 0) {
+          setCurrentWallpaper(allWallpapers[0]);
+          if (!allWallpapers[0].startsWith('data:image/')) {
+            localStorage.setItem('selectedWallpaper', allWallpapers[0]);
+          }
+        } else {
+          // If no wallpapers left, reset to default
+          setCurrentWallpaper('/wallpapers/default.jpg');
+          localStorage.setItem('selectedWallpaper', '/wallpapers/default.jpg');
+        }
+      }
+      
+      return updated;
+    });
+    
+    setSnackbarMessage('Default wallpaper hidden');
+    setSnackbarOpen(true);
+  }, [currentWallpaper, customWallpapers]);
+
   // --- Render Logic ---
   const renderWidget = (widgetId: string) => {
     const widget = availableWidgets.find(w => w.id === widgetId);
@@ -1419,6 +1475,8 @@ const App = () => {
         customWallpapers={customWallpapers}
         onDeleteCustomWallpaper={handleDeleteCustomWallpaper}
         onAddCustomWallpaper={handleAddCustomWallpaper}
+        hiddenDefaultWallpapers={hiddenDefaultWallpapers}
+        onDeleteDefaultWallpaper={handleDeleteDefaultWallpaper}
       />
 
       <AddQuickLinkForm

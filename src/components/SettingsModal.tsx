@@ -26,6 +26,8 @@ interface SettingsModalProps {
   customWallpapers: string[];
   onDeleteCustomWallpaper: (wallpaper: string) => void;
   onAddCustomWallpaper: (wallpaper: string) => void;
+  hiddenDefaultWallpapers: string[];
+  onDeleteDefaultWallpaper: (wallpaper: string) => void;
 }
 
 interface TabPanelProps {
@@ -86,6 +88,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   customWallpapers,
   onDeleteCustomWallpaper,
   onAddCustomWallpaper,
+  hiddenDefaultWallpapers,
+  onDeleteDefaultWallpaper,
 }) => {
   const [tabValue, setTabValue] = useState(0);
   const [userName, setUserName] = useState(initialUserName);
@@ -704,7 +708,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     {/* All Wallpapers Grid */}
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 2 }}>
                       {/* Default Wallpapers */}
-                      {WALLPAPERS.map((wallpaper, i) => (
+                      {WALLPAPERS.filter(wallpaper => !hiddenDefaultWallpapers.includes(wallpaper.path)).map((wallpaper, i) => (
                         <Box 
                           key={wallpaper.id} 
                           sx={{ 
@@ -718,29 +722,57 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             animate="animate"
                             whileHover="hover"
                           >
-                            <Box
-                              onClick={() => onWallpaperChange(wallpaper.path)}
-                              sx={{
-                                height: 100,
-                                width: 100,
-                                backgroundImage: `url(${wallpaper.path})`,
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                                borderRadius: '12px',
-                                cursor: 'pointer',
-                                border: currentWallpaper === wallpaper.path 
-                                  ? '2px solid var(--primary-color)' 
-                                  : '2px solid transparent',
-                                transition: 'all 0.3s ease',
-                                boxShadow: currentWallpaper === wallpaper.path 
-                                  ? '0 0 15px rgba(138, 180, 248, 0.5)' 
-                                  : '0 5px 15px rgba(0, 0, 0, 0.2)',
-                                '&:hover': {
-                                  opacity: 0.9,
-                                  transform: 'scale(1.03)',
-                                }
-                              }}
-                            />
+                            <Box sx={{ position: 'relative' }}>
+                              <Box
+                                onClick={() => onWallpaperChange(wallpaper.path)}
+                                sx={{
+                                  height: 100,
+                                  width: 100,
+                                  backgroundImage: `url(${wallpaper.path})`,
+                                  backgroundSize: 'cover',
+                                  backgroundPosition: 'center',
+                                  borderRadius: '12px',
+                                  cursor: 'pointer',
+                                  border: currentWallpaper === wallpaper.path 
+                                    ? '2px solid var(--primary-color)' 
+                                    : '2px solid transparent',
+                                  transition: 'all 0.3s ease',
+                                  boxShadow: currentWallpaper === wallpaper.path 
+                                    ? '0 0 15px rgba(138, 180, 248, 0.5)' 
+                                    : '0 5px 15px rgba(0, 0, 0, 0.2)',
+                                  '&:hover': {
+                                    opacity: 0.9,
+                                    transform: 'scale(1.03)',
+                                  }
+                                }}
+                              />
+                              {/* Delete button for default wallpapers */}
+                              <IconButton
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeleteDefaultWallpaper(wallpaper.path);
+                                }}
+                                sx={{
+                                  position: 'absolute',
+                                  top: 4,
+                                  right: 4,
+                                  width: 24,
+                                  height: 24,
+                                  backgroundColor: 'rgba(211, 47, 47, 0.9)',
+                                  color: 'white',
+                                  zIndex: 10,
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(211, 47, 47, 1)',
+                                    transform: 'scale(1.1)'
+                                  },
+                                  '& .MuiSvgIcon-root': {
+                                    fontSize: '16px'
+                                  }
+                                }}
+                              >
+                                <CloseIcon />
+                              </IconButton>
+                            </Box>
                             <Typography 
                               variant="caption" 
                               display="block" 
@@ -806,12 +838,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                 }}
                                 sx={{
                                   position: 'absolute',
-                                  top: -8,
-                                  right: -8,
+                                  top: 4,
+                                  right: 4,
                                   width: 24,
                                   height: 24,
                                   backgroundColor: 'rgba(211, 47, 47, 0.9)',
                                   color: 'white',
+                                  zIndex: 10,
                                   '&:hover': {
                                     backgroundColor: 'rgba(211, 47, 47, 1)',
                                     transform: 'scale(1.1)'

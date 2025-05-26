@@ -9,10 +9,12 @@ The Widgetopia dashboard now supports advanced wallpaper management, including c
 - **Base64 Storage**: Images are converted to Base64 format and stored in localStorage for persistence
 - **Auto-Shuffle**: Automatically change wallpapers every hour from all available wallpapers (default + custom)
 - **Unified Gallery**: All wallpapers (default and custom) are displayed together in a single grid
-- **Individual Deletion**: Custom wallpapers can be deleted individually with a delete button
+- **Individual Deletion**: Both custom and default wallpapers can be deleted individually with delete buttons
+- **Default Wallpaper Management**: Users can hide default wallpapers they don't want to see
 - **Migration Support**: Automatically migrates old single custom wallpaper to new multi-wallpaper system
 - **Validation**: File type validation and duplicate detection
 - **Proper State Management**: Uses parent component handlers for consistent state updates
+- **Improved Delete Button Positioning**: Delete buttons are positioned inside the wallpaper preview for better visibility
 
 ## How It Works
 
@@ -37,7 +39,8 @@ The Widgetopia dashboard now supports advanced wallpaper management, including c
 
 ### Storage Strategy
 - **Custom wallpapers**: Stored as Base64 array in localStorage key 'customWallpapers'
-- **Predefined wallpapers**: Stored as file paths, combined with custom wallpapers for shuffle
+- **Hidden default wallpapers**: Stored as file path array in localStorage key 'hiddenDefaultWallpapers'
+- **Predefined wallpapers**: Stored as file paths, filtered by hidden list, combined with custom wallpapers for shuffle
 - **Shuffle setting**: Stored as boolean in localStorage key 'wallpaperShuffle'
 - **Migration**: Old 'customWallpaper' (single) is automatically migrated to 'customWallpapers' (array)
 - **State Management**: Parent component (App.tsx) manages all wallpaper state and persistence
@@ -60,6 +63,8 @@ interface SettingsModalProps {
   customWallpapers: string[];
   onDeleteCustomWallpaper: (wallpaper: string) => void;
   onAddCustomWallpaper: (wallpaper: string) => void;
+  hiddenDefaultWallpapers: string[];
+  onDeleteDefaultWallpaper: (wallpaper: string) => void;
 }
 ```
 
@@ -92,6 +97,29 @@ const handleDeleteCustomWallpaper = useCallback((wallpaperToDelete: string) => {
   setSnackbarMessage('Custom wallpaper deleted');
   setSnackbarOpen(true);
 }, [currentWallpaper]);
+
+const handleDeleteDefaultWallpaper = useCallback((wallpaperToDelete: string) => {
+  setHiddenDefaultWallpapers(prev => {
+    const updated = [...prev, wallpaperToDelete];
+    
+    // If the deleted wallpaper was the current one, switch to a visible wallpaper
+    if (currentWallpaper === wallpaperToDelete) {
+      const allWallpapers = getAllWallpapers();
+      const remainingWallpapers = allWallpapers.filter(w => w !== wallpaperToDelete);
+      if (remainingWallpapers.length > 0) {
+        setCurrentWallpaper(remainingWallpapers[0]);
+        if (!remainingWallpapers[0].startsWith('data:image/')) {
+          localStorage.setItem('selectedWallpaper', remainingWallpapers[0]);
+        }
+      }
+    }
+    
+    return updated;
+  });
+  
+  setSnackbarMessage('Default wallpaper hidden');
+  setSnackbarOpen(true);
+}, [currentWallpaper, customWallpapers]);
 ```
 
 ### File Validation
@@ -133,9 +161,11 @@ reader.readAsDataURL(file);
 - Loading state during upload process
 
 ### Wallpaper Gallery
-- Unified grid showing default and custom wallpapers together
+- Unified grid showing visible default and custom wallpapers together
 - Custom wallpapers display with "Custom 1", "Custom 2" etc. labels
-- Delete buttons (red X) on custom wallpapers only
+- Delete buttons (red X) on both default and custom wallpapers
+- Delete buttons positioned inside the wallpaper preview (top-right corner)
+- Hidden default wallpapers are filtered out from the display
 - Selection indicators and hover effects
 - Responsive grid layout
 
@@ -159,6 +189,8 @@ reader.readAsDataURL(file);
 - File validation testing
 - Duplicate detection testing
 - Parent component handler testing
+- Hidden default wallpapers storage and filtering tests
+- Default wallpaper deletion functionality tests
 
 ## Future Enhancements
 - Image compression/resizing before storage

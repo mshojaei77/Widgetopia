@@ -93,6 +93,45 @@ describe('Custom Wallpaper Upload', () => {
     expect(shuffleEnabled).toBe(true);
   });
 
+  test('should store hidden default wallpapers in localStorage', () => {
+    const hiddenWallpapers = ['/wallpapers/forest.jpg', '/wallpapers/ocean.jpg'];
+    
+    localStorage.setItem('hiddenDefaultWallpapers', JSON.stringify(hiddenWallpapers));
+    
+    const stored = localStorage.getItem('hiddenDefaultWallpapers');
+    expect(JSON.parse(stored!)).toEqual(hiddenWallpapers);
+  });
+
+  test('should add wallpaper to hidden default wallpapers array', () => {
+    const existingHidden = ['/wallpapers/forest.jpg'];
+    const newHidden = '/wallpapers/ocean.jpg';
+    
+    localStorage.setItem('hiddenDefaultWallpapers', JSON.stringify(existingHidden));
+    
+    const current = JSON.parse(localStorage.getItem('hiddenDefaultWallpapers') || '[]');
+    const updated = [...current, newHidden];
+    localStorage.setItem('hiddenDefaultWallpapers', JSON.stringify(updated));
+    
+    const result = JSON.parse(localStorage.getItem('hiddenDefaultWallpapers')!);
+    expect(result).toEqual([...existingHidden, newHidden]);
+  });
+
+  test('should filter out hidden default wallpapers from available wallpapers', () => {
+    const allDefaultWallpapers = [
+      '/wallpapers/default.jpg',
+      '/wallpapers/forest.jpg',
+      '/wallpapers/mountains.jpg',
+      '/wallpapers/ocean.jpg'
+    ];
+    const hiddenWallpapers = ['/wallpapers/forest.jpg', '/wallpapers/ocean.jpg'];
+    
+    const visibleWallpapers = allDefaultWallpapers.filter(
+      wallpaper => !hiddenWallpapers.includes(wallpaper)
+    );
+    
+    expect(visibleWallpapers).toEqual(['/wallpapers/default.jpg', '/wallpapers/mountains.jpg']);
+  });
+
   test('should identify base64 wallpapers correctly', () => {
     const isBase64Wallpaper = (wallpaper: string) => wallpaper.startsWith('data:image/');
     
@@ -116,9 +155,11 @@ describe('Custom Wallpaper Upload', () => {
     // Mock parent component handlers
     const mockOnAddCustomWallpaper = jest.fn();
     const mockOnDeleteCustomWallpaper = jest.fn();
+    const mockOnDeleteDefaultWallpaper = jest.fn();
     const mockOnWallpaperChange = jest.fn();
     
     const testWallpaper = 'data:image/png;base64,test';
+    const testDefaultWallpaper = '/wallpapers/forest.jpg';
     
     // Simulate adding a wallpaper
     mockOnAddCustomWallpaper(testWallpaper);
@@ -128,9 +169,13 @@ describe('Custom Wallpaper Upload', () => {
     mockOnWallpaperChange(testWallpaper);
     expect(mockOnWallpaperChange).toHaveBeenCalledWith(testWallpaper);
     
-    // Simulate deleting a wallpaper
+    // Simulate deleting a custom wallpaper
     mockOnDeleteCustomWallpaper(testWallpaper);
     expect(mockOnDeleteCustomWallpaper).toHaveBeenCalledWith(testWallpaper);
+    
+    // Simulate deleting a default wallpaper
+    mockOnDeleteDefaultWallpaper(testDefaultWallpaper);
+    expect(mockOnDeleteDefaultWallpaper).toHaveBeenCalledWith(testDefaultWallpaper);
   });
 });
 
