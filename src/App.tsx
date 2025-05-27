@@ -15,6 +15,8 @@ import FlagIcon from '@mui/icons-material/Flag';
 import DeleteIcon from '@mui/icons-material/Delete';
 import type { WidgetConfig, QuickLink, Todo, WidgetLayout } from './types';
 import type { Layout } from 'react-grid-layout';
+import { MdApps } from 'react-icons/md'; // Perfect dashboard/widget grid icon
+import ReactDOMServer from 'react-dom/server'; // To render icon to string
 
 // Import Widgets
 import Clock from './widgets/Clock';
@@ -301,6 +303,118 @@ const CountryFlag = () => {
       </Box>
     </Tooltip>
   );
+};
+
+// Favicon generation utility
+/**
+ * Generates professional SVG favicons for the dashboard application
+ * 
+ * Benefits of this approach:
+ * - ✅ Fast loading: No external image requests, embedded as data URLs
+ * - ✅ Scalable: SVG format ensures crisp display at any size
+ * - ✅ Modern design: Uses gradients and professional styling
+ * - ✅ Customizable: Multiple icon styles available
+ * - ✅ Browser compatible: Works across all modern browsers
+ * - ✅ Performance: Smaller file size than traditional favicon.ico
+ * 
+ * @param type - The favicon style to generate
+ * @returns Data URL string for the generated SVG favicon
+ */
+const generateFavicon = (type: 'grid' | 'dashboard' | 'widgets' | 'modern' = 'modern') => {
+  let svgContent = '';
+  
+  switch (type) {
+    case 'grid':
+      svgContent = `
+        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="grid-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#4f46e5" />
+              <stop offset="100%" stop-color="#7c3aed" />
+            </linearGradient>
+          </defs>
+          <rect width="32" height="32" rx="6" fill="url(#grid-gradient)" />
+          <g fill="white" opacity="0.9">
+            <rect x="6" y="6" width="8" height="8" rx="1" />
+            <rect x="18" y="6" width="8" height="8" rx="1" />
+            <rect x="6" y="18" width="8" height="8" rx="1" />
+            <rect x="18" y="18" width="8" height="8" rx="1" />
+          </g>
+        </svg>
+      `;
+      break;
+      
+    case 'dashboard':
+      svgContent = `
+        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="dash-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#06b6d4" />
+              <stop offset="100%" stop-color="#3b82f6" />
+            </linearGradient>
+          </defs>
+          <rect width="32" height="32" rx="6" fill="url(#dash-gradient)" />
+          <g fill="white" opacity="0.95">
+            <rect x="4" y="4" width="10" height="6" rx="1" />
+            <rect x="18" y="4" width="10" height="6" rx="1" />
+            <rect x="4" y="14" width="6" height="14" rx="1" />
+            <rect x="14" y="14" width="14" height="8" rx="1" />
+            <rect x="14" y="26" width="14" height="2" rx="1" />
+          </g>
+        </svg>
+      `;
+      break;
+      
+    case 'widgets':
+      svgContent = `
+        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="widget-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#f59e0b" />
+              <stop offset="100%" stop-color="#ef4444" />
+            </linearGradient>
+          </defs>
+          <rect width="32" height="32" rx="6" fill="url(#widget-gradient)" />
+          <g fill="white" opacity="0.9">
+            <circle cx="10" cy="10" r="3" />
+            <rect x="18" y="7" width="8" height="6" rx="1" />
+            <rect x="6" y="18" width="20" height="3" rx="1" />
+            <rect x="6" y="25" width="12" height="3" rx="1" />
+          </g>
+        </svg>
+      `;
+      break;
+      
+    case 'modern':
+    default:
+      svgContent = `
+        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="modern-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#667eea" />
+              <stop offset="100%" stop-color="#764ba2" />
+            </linearGradient>
+            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+              <feMerge> 
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          <rect width="32" height="32" rx="8" fill="url(#modern-gradient)" />
+          <g fill="white" opacity="0.95" filter="url(#glow)">
+            <rect x="7" y="7" width="6" height="6" rx="1.5" />
+            <rect x="19" y="7" width="6" height="6" rx="1.5" />
+            <rect x="7" y="19" width="6" height="6" rx="1.5" />
+            <rect x="19" y="19" width="6" height="6" rx="1.5" />
+          </g>
+        </svg>
+      `;
+      break;
+  }
+  
+  return `data:image/svg+xml;base64,${btoa(svgContent)}`;
 };
 
 const App = () => {
@@ -654,6 +768,33 @@ const App = () => {
   useEffect(() => {
     localStorage.setItem('hiddenDefaultWallpapers', JSON.stringify(hiddenDefaultWallpapers));
   }, [hiddenDefaultWallpapers]);
+
+  // Effect to set a professional dashboard favicon
+  /**
+   * Sets up a dynamic, professional favicon for the dashboard application
+   * 
+   * This implementation:
+   * - Creates a modern SVG favicon with gradients and professional styling
+   * - Uses data URLs for instant loading (no network requests)
+   * - Ensures the favicon is properly set in the document head
+   * - Provides a visual identity that matches the dashboard theme
+   * 
+   * The favicon represents the widget/dashboard concept with a clean grid layout
+   * and modern gradient styling that looks professional in browser tabs.
+   */
+  useEffect(() => {
+    const faviconLink = document.querySelector("link[rel~='icon']") || document.createElement('link');
+    faviconLink.setAttribute('rel', 'icon');
+    
+    // Generate a modern, professional favicon
+    const faviconUrl = generateFavicon('modern');
+    faviconLink.setAttribute('href', faviconUrl);
+    
+    // Ensure the link element is in the head
+    if (!document.head.contains(faviconLink)) {
+      document.head.appendChild(faviconLink);
+    }
+  }, []);
 
   // Auto-change wallpaper every hour when shuffle is enabled
   useEffect(() => {
