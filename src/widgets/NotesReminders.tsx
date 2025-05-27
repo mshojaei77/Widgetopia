@@ -45,7 +45,6 @@ import {
   Settings as SettingsIcon,
   Sync as SyncIcon,
   Security as SecurityIcon,
-  Telegram as TelegramIcon,
   Google as GoogleIcon,
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
@@ -78,7 +77,7 @@ interface Reminder {
   completed: boolean;
   priority: 'low' | 'medium' | 'high';
   category: 'personal' | 'work' | 'shopping' | 'health' | 'other';
-  source: 'local' | 'google' | 'telegram';
+  source: 'local' | 'google';
   externalId?: string;
   notificationSent?: boolean;
 }
@@ -98,29 +97,12 @@ interface GoogleCalendarEvent {
   end: { dateTime?: string; date?: string };
 }
 
-interface TelegramMessage {
-  message_id: number;
-  text: string;
-  date: number;
-  from?: {
-    id: number;
-    first_name: string;
-    username?: string;
-  };
-}
-
 interface AuthState {
   google: {
     isAuthenticated: boolean;
     accessToken?: string;
     refreshToken?: string;
     expiresAt?: number;
-    error?: string;
-  };
-  telegram: {
-    isAuthenticated: boolean;
-    botToken?: string;
-    chatId?: string;
     error?: string;
   };
 }
@@ -427,43 +409,6 @@ class GoogleCalendarAPI {
   }
 }
 
-// Telegram API (for saved messages)
-class TelegramAPI {
-  static async getSavedMessages(botToken: string, chatId: string, limit: number = 20): Promise<TelegramMessage[]> {
-    try {
-      // Note: This is a simplified example. In practice, you'd need to implement
-      // a proper Telegram bot that can access saved messages through the Bot API
-      const response = await fetch(
-        `https://api.telegram.org/bot${botToken}/getUpdates?limit=${limit}&offset=-${limit}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Telegram API error: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      
-      if (!data.ok) {
-        throw new Error(`Telegram API error: ${data.description}`);
-      }
-      
-      // Filter for saved messages (messages to self)
-      return data.result
-        .filter((update: any) => update.message && update.message.chat.type === 'private')
-        .map((update: any) => update.message);
-    } catch (error) {
-      console.error('Failed to fetch Telegram messages:', error);
-      return [];
-    }
-  }
-}
-
 // Animation variants
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -478,8 +423,7 @@ const NotesReminders: React.FC = () => {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [authState, setAuthState] = useState<AuthState>({
-    google: { isAuthenticated: false },
-    telegram: { isAuthenticated: false }
+    google: { isAuthenticated: false }
   });
   const [securityConfig, setSecurityConfig] = useState<SecurityConfig>({
     enableEncryption: true,
@@ -503,8 +447,6 @@ const NotesReminders: React.FC = () => {
   
   // State for settings dialog inputs
   const [settingsActiveTab, setSettingsActiveTab] = useState(0); // Tabs within Settings Dialog
-  const [telegramBotTokenInput, setTelegramBotTokenInput] = useState('');
-  const [telegramChatIdInput, setTelegramChatIdInput] = useState('');
   
   // Form state
   const [newItemTitle, setNewItemTitle] = useState('');
@@ -668,48 +610,9 @@ const NotesReminders: React.FC = () => {
     }
   };
   
-  const handleTelegramAuth = async (botToken: string, chatId: string) => {
-    try {
-      setLoading(true);
-      
-      // Validate bot token format
-      if (!botToken.match(/^\d+:[A-Za-z0-9_-]{35}$/)) {
-        throw new Error('Invalid bot token format');
-      }
-      
-      // Test the connection
-      const testMessages = await TelegramAPI.getSavedMessages(botToken, chatId, 1);
-      
-      setAuthState(prev => ({
-        ...prev,
-        telegram: {
-          isAuthenticated: true,
-          botToken,
-          chatId
-        }
-      }));
-      
-      showSnackbar('Telegram connected successfully', 'success');
-      await syncTelegramMessages();
-    } catch (error) {
-      console.error('Telegram authentication failed:', error);
-      setAuthState(prev => ({
-        ...prev,
-        telegram: {
-          isAuthenticated: false,
-          error: error instanceof Error ? error.message : 'Authentication failed'
-        }
-      }));
-      showSnackbar('Telegram authentication failed', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
   const handleLogout = () => {
     setAuthState({
-      google: { isAuthenticated: false },
-      telegram: { isAuthenticated: false }
+      google: { isAuthenticated: false }
     });
     
     if (autoLogoutTimer.current) clearTimeout(autoLogoutTimer.current);
@@ -770,46 +673,6 @@ const NotesReminders: React.FC = () => {
     } catch (error) {
       console.error('Google Calendar sync failed:', error);
       showSnackbar('Google Calendar sync failed', 'error');
-    } finally {
-      setSyncing(false);
-    }
-  };
-  
-  const syncTelegramMessages = async () => {
-    if (!authState.telegram.isAuthenticated || !authState.telegram.botToken || !authState.telegram.chatId) return;
-    
-    try {
-      setSyncing(true);
-      
-      const messages = await TelegramAPI.getSavedMessages(
-        authState.telegram.botToken,
-        authState.telegram.chatId
-      );
-      
-      // Convert messages to notes
-      const newNotes: Note[] = messages
-        .filter(msg => msg.text && msg.text.length > 0)
-        .map(msg => ({
-          id: `telegram-${msg.message_id}`,
-          title: msg.text.substring(0, 50) + (msg.text.length > 50 ? '...' : ''),
-          content: msg.text,
-          createdAt: new Date(msg.date * 1000),
-          updatedAt: new Date(msg.date * 1000),
-          tags: ['telegram'],
-          priority: 'low',
-          category: 'personal'
-        }));
-      
-      // Merge with existing notes (avoid duplicates)
-      setNotes(prev => {
-        const filtered = prev.filter(n => !n.id.startsWith('telegram-'));
-        return [...filtered, ...newNotes];
-      });
-      
-      showSnackbar(`Synced ${newNotes.length} messages from Telegram`, 'success');
-    } catch (error) {
-      console.error('Telegram sync failed:', error);
-      showSnackbar('Telegram sync failed', 'error');
     } finally {
       setSyncing(false);
     }
@@ -978,9 +841,8 @@ const NotesReminders: React.FC = () => {
             <IconButton
               onClick={() => {
                 syncGoogleCalendar();
-                syncTelegramMessages();
               }}
-              disabled={syncing || (!authState.google.isAuthenticated && !authState.telegram.isAuthenticated)}
+              disabled={syncing || !authState.google.isAuthenticated}
               sx={{ color: 'white' }}
             >
               {syncing ? <CircularProgress size={20} /> : <SyncIcon />}
@@ -1681,7 +1543,7 @@ const NotesReminders: React.FC = () => {
           <SettingsIcon />
           Settings & Integrations
         </DialogTitle>
-        <DialogContent sx={{ "& ul": { pl: 2 } }}> {/* Added padding for lists inside DialogContent */}
+        <DialogContent sx={{ "& ul": { pl: 2 } }}>
           <Tabs
             value={settingsActiveTab}
             onChange={(_, newValue) => setSettingsActiveTab(newValue)}
@@ -1746,107 +1608,6 @@ const NotesReminders: React.FC = () => {
                 {authState.google.error && (
                   <Alert severity="error" sx={{ mt: 1 }}>
                     {authState.google.error}
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
-            
-            <Card sx={{ mb: 2, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <TelegramIcon sx={{ color: '#0088cc' }} />
-                    <Typography variant="h6" sx={{ color: 'white' }}>
-                      Telegram Saved Messages
-                    </Typography>
-                    {authState.telegram.isAuthenticated && (
-                      <CheckCircleIcon sx={{ color: '#4caf50', fontSize: 20 }} />
-                    )}
-                  </Box>
-                  {!authState.telegram.isAuthenticated && (
-                    <Button
-                      variant="contained"
-                      onClick={() => {
-                        if (telegramBotTokenInput && telegramChatIdInput) {
-                          handleTelegramAuth(telegramBotTokenInput, telegramChatIdInput);
-                        } else {
-                          showSnackbar('Please enter Bot Token and Chat ID.', 'warning');
-                        }
-                      }}
-                      disabled={loading || !telegramBotTokenInput || !telegramChatIdInput}
-                      sx={{ bgcolor: 'var(--primary-color)', color: 'white', '&:hover': { bgcolor: 'var(--primary-color-dark)'} }}
-                    >
-                      Connect
-                    </Button>
-                  )}
-                  {authState.telegram.isAuthenticated && (
-                     <Button
-                        variant="outlined"
-                        onClick={() => {
-                            setAuthState(prev => ({...prev, telegram: {isAuthenticated: false}}));
-                            setTelegramBotTokenInput('');
-                            setTelegramChatIdInput('');
-                            showSnackbar('Telegram disconnected.', 'info');
-                        }}
-                        disabled={loading}
-                        sx={{ borderColor: 'rgba(255, 255, 255, 0.3)', color: 'white', '&:hover': { borderColor: 'white', backgroundColor: 'rgba(255,255,255,0.1)' } }}
-                    >
-                        Disconnect
-                    </Button>
-                  )}
-                </Box>
-                {!authState.telegram.isAuthenticated && (
-                  <>
-                    <TextField
-                      label="Telegram Bot Token"
-                      fullWidth
-                      value={telegramBotTokenInput}
-                      onChange={(e) => setTelegramBotTokenInput(e.target.value)}
-                      variant="outlined"
-                      size="small"
-                      margin="dense"
-                      placeholder="e.g., 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-                      helperText="Create a bot with @BotFather on Telegram to get a token."
-                      sx={{ 
-                        mb: 1,
-                        '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                        '& .MuiInputBase-input': { color: 'white' },
-                        '& .MuiOutlinedInput-root': {
-                          '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                          '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.4)' },
-                        },
-                        '& .MuiFormHelperText-root': { color: 'rgba(255, 255, 255, 0.5)'}
-                      }}
-                    />
-                    <TextField
-                      label="Your Chat ID"
-                      fullWidth
-                      value={telegramChatIdInput}
-                      onChange={(e) => setTelegramChatIdInput(e.target.value)}
-                      variant="outlined"
-                      size="small"
-                      margin="dense"
-                      placeholder="e.g., 123456789"
-                      helperText="You can get your Chat ID from bots like @userinfobot on Telegram."
-                      sx={{ 
-                        mb: 1,
-                        '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                        '& .MuiInputBase-input': { color: 'white' },
-                        '& .MuiOutlinedInput-root': {
-                          '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                          '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.4)' },
-                        },
-                        '& .MuiFormHelperText-root': { color: 'rgba(255, 255, 255, 0.5)'}
-                      }}
-                    />
-                  </>
-                )}
-                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: authState.telegram.isAuthenticated ? 0 : 1 }}>
-                  Import your saved messages (messages sent to your bot or from your bot in your private chat) as notes.
-                </Typography>
-                {authState.telegram.error && (
-                  <Alert severity="error" sx={{ mt: 1 }}>
-                    {`Connection failed: ${authState.telegram.error}. Please check your token and Chat ID.`}
                   </Alert>
                 )}
               </CardContent>
@@ -1983,22 +1744,6 @@ const NotesReminders: React.FC = () => {
                 <ListItem><ListItemText primary="15. Now you can use the 'Connect' button in the 'Integrations' tab." /></ListItem>
               </List>
             </Paper>
-
-            <Typography variant="h6" sx={{ color: 'white', mb: 2 }}>Telegram Bot Setup Guide</Typography>
-            <Paper sx={{ p: 2, backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <List dense>
-                <ListItem><ListItemText primary="1. Open Telegram and search for 'BotFather'. Start a chat with the verified BotFather." /></ListItem>
-                <ListItem><ListItemText primary="2. Send the /newbot command to BotFather." /></ListItem>
-                <ListItem><ListItemText primary="3. Follow the prompts to choose a display name and a unique username for your bot (usernames must end in 'bot', e.g., MyNotesBot)." /></ListItem>
-                <ListItem><ListItemText primary="4. BotFather will provide you with an API token. Copy this token carefully." /></ListItem>
-                <ListItem><ListItemText primary="5. Get your Chat ID:" secondaryTypographyProps={{ component: 'div' }} secondary={<List dense disablePadding sx={{pl:2}}>
-                  <ListItem sx={{py:0.2}}><ListItemText primary="• Option A: Search for a bot like '@userinfobot' or '@getidsbot' in Telegram. Start a chat, and it will reply with your User ID (this is your Chat ID)." /></ListItem>
-                  <ListItem sx={{py:0.2}}><ListItemText primary="• Option B: After creating your bot, send any message to your new bot. Then, open your web browser and go to: https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates (replace YOUR_BOT_TOKEN with your actual token). Look for a 'result' array, and inside it, find a 'message' object. The 'chat' object within 'message' will have an 'id'. This is your Chat ID." /></ListItem>
-                  </List>} /></ListItem>
-                <ListItem><ListItemText primary="6. Go to the 'Integrations' tab in this widget's settings." /></ListItem>
-                <ListItem><ListItemText primary="7. Enter the Bot API Token and your Chat ID into the respective fields and click 'Connect'." /></ListItem>
-              </List>
-            </Paper>
           </Box>
 
         </DialogContent>
@@ -2006,11 +1751,6 @@ const NotesReminders: React.FC = () => {
           <Button 
             onClick={() => {
               setShowSettingsDialog(false);
-              // Reset temporary inputs if dialog is closed without saving new Telegram details
-              if (!authState.telegram.isAuthenticated) {
-                setTelegramBotTokenInput(authState.telegram.botToken || '');
-                setTelegramChatIdInput(authState.telegram.chatId || '');
-              }
             }} 
             sx={{ color: 'rgba(255, 255, 255, 0.7)', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)'} }}
           >
