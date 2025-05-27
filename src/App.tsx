@@ -18,6 +18,13 @@ import type { Layout } from 'react-grid-layout';
 import { MdApps } from 'react-icons/md'; // Perfect dashboard/widget grid icon
 import ReactDOMServer from 'react-dom/server'; // To render icon to string
 
+// Import Theme System
+import { colorPalettes, getColorPalette, getDefaultColorPalette, type ColorPalette } from './theme/colorPalettes';
+import { applyColorPalette, getStoredColorPalette, getStoredGlassConfig, type GlassThemeConfig, defaultGlassConfig } from './theme/glassTheme';
+
+// Import Glass Theme CSS
+import './styles/glass-theme.css';
+
 // Import Widgets
 import Clock from './widgets/Clock';
 import Weather from './widgets/Weather'; // Assuming Weather exists
@@ -481,6 +488,20 @@ const App = () => {
     return localStorage.getItem('weatherLocation') || 'Shiraz'; // Changed default to match screenshot
   });
 
+  // Color Palette and Glass Theme State
+  const [currentColorPalette, setCurrentColorPalette] = useState<ColorPalette>(() => {
+    const storedPaletteId = getStoredColorPalette();
+    if (storedPaletteId) {
+      const palette = getColorPalette(storedPaletteId);
+      if (palette) return palette;
+    }
+    return getDefaultColorPalette();
+  });
+
+  const [glassConfig, setGlassConfig] = useState<GlassThemeConfig>(() => {
+    return getStoredGlassConfig();
+  });
+
   // Widget Definitions
   const availableWidgets = [
     { id: 'clock', name: 'Clock', component: Clock },
@@ -723,7 +744,10 @@ const App = () => {
     localStorage.setItem('weatherLocation', location);
   }, [location]);
 
-
+  // Apply color palette and glass theme
+  useEffect(() => {
+    applyColorPalette(currentColorPalette, glassConfig);
+  }, [currentColorPalette, glassConfig]);
 
   // Save quick links (moved from QuickLinks component)
   useEffect(() => {
@@ -1047,6 +1071,25 @@ const App = () => {
     setSnackbarMessage(`Weather location set to ${newLocation}`);
     setSnackbarOpen(true);
   }, []);
+
+  // Add handlers for color palette and glass theme
+  const handleColorPaletteChange = useCallback((paletteId: string) => {
+    const palette = getColorPalette(paletteId);
+    if (palette) {
+      setCurrentColorPalette(palette);
+      localStorage.setItem('selectedColorPalette', paletteId);
+      setSnackbarMessage(`Color palette changed to ${palette.name}`);
+      setSnackbarOpen(true);
+    }
+  }, []);
+
+  const handleGlassConfigChange = useCallback((newConfig: Partial<GlassThemeConfig>) => {
+    const updatedConfig = { ...glassConfig, ...newConfig };
+    setGlassConfig(updatedConfig);
+    localStorage.setItem('glassConfig', JSON.stringify(updatedConfig));
+    setSnackbarMessage('Glass theme settings updated');
+    setSnackbarOpen(true);
+  }, [glassConfig]);
 
   const handleToggleEditMode = () => {
     if (editMode) {
@@ -1625,6 +1668,10 @@ const App = () => {
         onAddCustomWallpaper={handleAddCustomWallpaper}
         hiddenDefaultWallpapers={hiddenDefaultWallpapers}
         onDeleteDefaultWallpaper={handleDeleteDefaultWallpaper}
+        currentColorPalette={currentColorPalette}
+        onColorPaletteChange={handleColorPaletteChange}
+        glassConfig={glassConfig}
+        onGlassConfigChange={handleGlassConfigChange}
       />
 
       <AddQuickLinkForm

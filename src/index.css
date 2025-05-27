@@ -393,6 +393,171 @@ body {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 20px rgba(138, 180, 248, 0.3);
 }
 
+/* Enhanced dropdown glass effects */
+.glass-dropdown {
+  background: var(--glass-dropdown-bg) !important;
+  backdrop-filter: var(--glass-dropdown-backdrop-filter) !important;
+  -webkit-backdrop-filter: var(--glass-dropdown-backdrop-filter) !important;
+  border: var(--glass-dropdown-border) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--glass-dropdown-shadow) !important;
+  position: relative;
+  overflow: hidden;
+  z-index: 1300;
+  /* Constrain width to match select field */
+  min-width: 160px !important;
+  max-width: 400px !important;
+  width: auto !important; /* Size based on content and anchor element */
+}
+
+.glass-dropdown::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%, rgba(0, 0, 0, 0.05) 100%);
+  pointer-events: none;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+.glass-dropdown::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 60%;
+  bottom: 60%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 2;
+  border-radius: var(--radius-md) 0 0 0;
+}
+
+/* Enhanced select field glass effects */
+.glass-select {
+  background: var(--glass-select-bg) !important;
+  backdrop-filter: blur(8px) saturate(1.6) brightness(1.05) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(1.6) brightness(1.05) !important;
+  border: var(--glass-select-border) !important;
+  border-radius: var(--radius-md) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.glass-select:hover {
+  border: var(--glass-select-hover-border) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.glass-select:focus-within {
+  border: var(--glass-select-focus-border) !important;
+  box-shadow: 0 0 0 3px rgba(138, 180, 248, 0.2) !important;
+}
+
+/* Enhanced menu item glass effects */
+.glass-menu-item {
+  transition: all 0.15s ease-in-out !important;
+  border-radius: var(--radius-sm) !important;
+  margin: 2px 4px !important;
+  position: relative;
+  z-index: 4;
+}
+
+.glass-menu-item:hover {
+  background: var(--glass-dropdown-item-hover-bg) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  transform: translateX(2px);
+}
+
+.glass-menu-item.Mui-selected {
+  background: var(--glass-dropdown-item-selected-bg) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  font-weight: 500 !important;
+}
+
+.glass-menu-item.Mui-selected:hover {
+  background: var(--glass-dropdown-item-selected-bg) !important;
+  transform: translateX(2px);
+}
+
+.glass-menu-item.Mui-focusVisible {
+  background: var(--glass-dropdown-item-focus-bg) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  outline: none !important;
+}
+
+/* Improved dropdown animations */
+@keyframes dropdownSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdownSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+}
+
+.glass-dropdown-enter {
+  animation: dropdownSlideIn 0.2s ease-out;
+}
+
+.glass-dropdown-exit {
+  animation: dropdownSlideOut 0.15s ease-in;
+}
+
+/* Enhanced scrollbar for dropdowns */
+.glass-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.glass-dropdown::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.glass-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.glass-dropdown::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Fix MUI Select dropdown width issues */
+.MuiMenu-paper {
+  min-width: auto !important;
+  width: auto !important;
+  max-width: 400px !important;
+}
+
+.MuiSelect-select + .MuiMenu-paper {
+  min-width: 160px !important;
+}
+
+/* Ensure dropdown doesn't exceed viewport */
+.MuiPopover-paper {
+  max-width: min(400px, 90vw) !important;
+}
+
 /* Particle effect overlay - static */
 .glass-particles {
   position: relative;

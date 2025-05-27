@@ -310,6 +310,160 @@ const theme = createTheme({
         },
       },
     },
+    // Enhanced MUI Select component with glass effects
+    MuiSelect: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'var(--glass-select-border)',
+            transition: 'all 0.2s ease-in-out',
+          },
+          '&:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'var(--glass-select-hover-border)',
+          },
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'var(--glass-select-focus-border)',
+            borderWidth: '2px',
+          },
+          '& .MuiSelect-select': {
+            backgroundColor: 'var(--glass-select-bg)',
+            backdropFilter: 'blur(8px) saturate(1.6) brightness(1.05)',
+            WebkitBackdropFilter: 'blur(8px) saturate(1.6) brightness(1.05)',
+            borderRadius: 'var(--radius-md)',
+            color: primaryTextColor,
+            transition: 'all 0.2s ease-in-out',
+            '&:focus': {
+              backgroundColor: 'var(--glass-select-bg)',
+            }
+          },
+          '&:hover': {
+            transform: 'translateY(-1px)',
+            '& .MuiSelect-select': {
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            }
+          }
+        },
+      },
+    },
+    // Enhanced MUI Menu component with glass effects
+    MuiMenu: {
+      styleOverrides: {
+        paper: {
+          background: 'var(--glass-dropdown-bg)',
+          backdropFilter: 'var(--glass-dropdown-backdrop-filter)',
+          WebkitBackdropFilter: 'var(--glass-dropdown-backdrop-filter)',
+          border: 'var(--glass-dropdown-border)',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: 'var(--glass-dropdown-shadow)',
+          marginTop: '4px',
+          minWidth: '160px',
+          maxWidth: '400px', // Prevent excessive width
+          width: 'auto', // Let it size based on content and anchor
+          maxHeight: '300px',
+          overflow: 'auto',
+          position: 'relative',
+          zIndex: 1300,
+          // Add glass overlay effects
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%, rgba(0, 0, 0, 0.05) 100%)',
+            pointerEvents: 'none',
+            zIndex: 1,
+            borderRadius: 'inherit',
+          },
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: '60%',
+            bottom: '60%',
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 40%)',
+            pointerEvents: 'none',
+            zIndex: 2,
+            borderRadius: 'var(--radius-md) 0 0 0',
+          },
+          // Custom scrollbar for dropdown
+          '&::-webkit-scrollbar': {
+            width: '6px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '3px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'rgba(255, 255, 255, 0.3)',
+            borderRadius: '3px',
+            '&:hover': {
+              background: 'rgba(255, 255, 255, 0.5)',
+            }
+          },
+        },
+        list: {
+          padding: '6px',
+          position: 'relative',
+          zIndex: 3, // Above the overlay effects
+        },
+      },
+    },
+    // Enhanced MUI MenuItem component with glass effects
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          transition: 'all 0.15s ease-in-out',
+          borderRadius: 'var(--radius-sm)',
+          margin: '2px 0',
+          padding: '8px 12px',
+          color: primaryTextColor,
+          fontSize: '0.875rem',
+          position: 'relative',
+          zIndex: 4, // Above all overlay effects
+          '&:hover': {
+            background: 'var(--glass-dropdown-item-hover-bg)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            transform: 'translateX(2px)',
+            color: primaryTextColor,
+          },
+          '&.Mui-selected': {
+            background: 'var(--glass-dropdown-item-selected-bg)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            color: primaryTextColor,
+            fontWeight: 500,
+            '&:hover': {
+              background: 'var(--glass-dropdown-item-selected-bg)',
+              transform: 'translateX(2px)',
+            }
+          },
+          '&.Mui-focusVisible': {
+            background: 'var(--glass-dropdown-item-focus-bg)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            outline: 'none',
+          },
+          '&.Mui-disabled': {
+            color: alpha(primaryTextColor, 0.4),
+            background: 'transparent',
+          }
+        },
+      },
+    },
+    // Enhanced MUI Popover for better dropdown positioning
+    MuiPopover: {
+      styleOverrides: {
+        paper: {
+          background: 'transparent', // Let Menu handle the background
+          boxShadow: 'none', // Let Menu handle the shadow
+          overflow: 'visible',
+        },
+      },
+    },
     // Add other component overrides as needed (e.g., AppBar, List, Switch)
   },
 });

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   Modal, Box, Paper, Typography, List, ListItem, ListItemText, Switch, IconButton, Divider,
-  Tab, Tabs, TextField, Button, Alert
+  Tab, Tabs, TextField, Button, Alert, Slider, FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
-import { Grid } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
 import { motion, AnimatePresence } from 'framer-motion';
+import { colorPalettes, type ColorPalette } from '../theme/colorPalettes';
+import { type GlassThemeConfig } from '../theme/glassTheme';
+import CloseIcon from '@mui/icons-material/Close';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -28,6 +29,11 @@ interface SettingsModalProps {
   onAddCustomWallpaper: (wallpaper: string) => void;
   hiddenDefaultWallpapers: string[];
   onDeleteDefaultWallpaper: (wallpaper: string) => void;
+  // Color palette and glass theme props
+  currentColorPalette: ColorPalette;
+  onColorPaletteChange: (paletteId: string) => void;
+  glassConfig: GlassThemeConfig;
+  onGlassConfigChange: (config: Partial<GlassThemeConfig>) => void;
 }
 
 interface TabPanelProps {
@@ -95,6 +101,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onAddCustomWallpaper,
   hiddenDefaultWallpapers,
   onDeleteDefaultWallpaper,
+  currentColorPalette,
+  onColorPaletteChange,
+  glassConfig,
+  onGlassConfigChange
 }) => {
   const [tabValue, setTabValue] = useState(0);
   const [userName, setUserName] = useState(initialUserName);
@@ -185,8 +195,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
     reader.readAsDataURL(file);
   };
-
-
 
   // Animation variants
   const modalVariants = {
@@ -325,6 +333,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <Tab label="General" id="settings-tab-0" />
                     <Tab label="Widgets" id="settings-tab-1" />
                     <Tab label="Wallpaper" id="settings-tab-2" />
+                    <Tab label="Theme" id="settings-tab-3" />
                   </Tabs>
                 </Box>
 
@@ -879,6 +888,445 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                           </motion.div>
                         </Box>
                       ))}
+                    </Box>
+                  </motion.div>
+                </TabPanel>
+
+                <TabPanel value={tabValue} index={3}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Typography variant="subtitle1" gutterBottom sx={{ 
+                      mb: 3,
+                      fontWeight: 600,
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      textAlign: 'left'
+                    }}>
+                      Theme & Glass Effects
+                    </Typography>
+
+                    {/* Color Palette Selection */}
+                    <Box sx={{ mb: 4 }}>
+                      <Typography variant="body2" gutterBottom sx={{ 
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        fontWeight: 500,
+                        mb: 2,
+                        textAlign: 'left'
+                      }}>
+                        Color Palette
+                      </Typography>
+                      <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                        <Select
+                          value={currentColorPalette.id}
+                          onChange={(e) => onColorPaletteChange(e.target.value)}
+                          sx={{
+                            backgroundColor: 'rgba(30, 30, 40, 0.7)',
+                            backdropFilter: 'blur(5px)',
+                            WebkitBackdropFilter: 'blur(5px)',
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(255, 255, 255, 0.1)',
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(255, 255, 255, 0.3)',
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'var(--primary-color)',
+                            },
+                            '& .MuiSelect-select': {
+                              color: 'white',
+                              padding: '10px 14px',
+                            },
+                            '& .MuiSvgIcon-root': {
+                              color: 'rgba(255, 255, 255, 0.7)',
+                            }
+                          }}
+                        >
+                          {colorPalettes.map((palette) => (
+                            <MenuItem key={palette.id} value={palette.id}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                  <Box sx={{ 
+                                    width: 16, 
+                                    height: 16, 
+                                    borderRadius: '50%', 
+                                    backgroundColor: palette.colors.primary,
+                                    border: '1px solid rgba(255,255,255,0.2)'
+                                  }} />
+                                  <Box sx={{ 
+                                    width: 16, 
+                                    height: 16, 
+                                    borderRadius: '50%', 
+                                    backgroundColor: palette.colors.secondary,
+                                    border: '1px solid rgba(255,255,255,0.2)'
+                                  }} />
+                                  <Box sx={{ 
+                                    width: 16, 
+                                    height: 16, 
+                                    borderRadius: '50%', 
+                                    backgroundColor: palette.colors.accent,
+                                    border: '1px solid rgba(255,255,255,0.2)'
+                                  }} />
+                                </Box>
+                                <Box>
+                                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                    {palette.name}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+                                    {palette.description}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+
+                      {/* Color Preview */}
+                      <Box sx={{ 
+                        p: 2, 
+                        borderRadius: 2, 
+                        backgroundColor: 'rgba(30, 30, 40, 0.5)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                      }}>
+                        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
+                          Preview Colors
+                        </Typography>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 1 }}>
+                          {[
+                            { label: 'Primary', color: currentColorPalette.colors.primary },
+                            { label: 'Secondary', color: currentColorPalette.colors.secondary },
+                            { label: 'Accent', color: currentColorPalette.colors.accent },
+                            { label: 'Glass BG', color: currentColorPalette.colors.glassBackground },
+                            { label: 'Success', color: currentColorPalette.colors.success },
+                            { label: 'Warning', color: currentColorPalette.colors.warning },
+                          ].map((item) => (
+                            <Box key={item.label} sx={{ textAlign: 'center' }}>
+                              <Box sx={{ 
+                                width: '100%', 
+                                height: 32, 
+                                borderRadius: 1, 
+                                backgroundColor: item.color,
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                mb: 0.5
+                              }} />
+                              <Typography variant="caption" sx={{ 
+                                color: 'rgba(255, 255, 255, 0.6)',
+                                fontSize: '0.7rem'
+                              }}>
+                                {item.label}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+                    </Box>
+
+                    {/* Glass Effect Configuration */}
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="body2" gutterBottom sx={{ 
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        fontWeight: 500,
+                        mb: 2,
+                        textAlign: 'left'
+                      }}>
+                        Glass Effect Settings
+                      </Typography>
+
+                      {/* Blur Intensity */}
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
+                          Blur Intensity: {glassConfig.blurIntensity}px
+                        </Typography>
+                        <Slider
+                          value={glassConfig.blurIntensity}
+                          onChange={(_, value) => onGlassConfigChange({ blurIntensity: value as number })}
+                          min={0}
+                          max={30}
+                          step={1}
+                          sx={{
+                            color: 'var(--primary-color)',
+                            '& .MuiSlider-thumb': {
+                              backgroundColor: 'var(--primary-color)',
+                              border: '2px solid rgba(255, 255, 255, 0.3)',
+                              '&:hover': {
+                                boxShadow: '0 0 0 8px rgba(138, 180, 248, 0.16)',
+                              },
+                            },
+                            '& .MuiSlider-track': {
+                              backgroundColor: 'var(--primary-color)',
+                            },
+                            '& .MuiSlider-rail': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            },
+                          }}
+                        />
+                      </Box>
+
+                      {/* Opacity */}
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
+                          Glass Opacity: {Math.round(glassConfig.opacity * 100)}%
+                        </Typography>
+                        <Slider
+                          value={glassConfig.opacity}
+                          onChange={(_, value) => onGlassConfigChange({ opacity: value as number })}
+                          min={0}
+                          max={0.5}
+                          step={0.01}
+                          sx={{
+                            color: 'var(--primary-color)',
+                            '& .MuiSlider-thumb': {
+                              backgroundColor: 'var(--primary-color)',
+                              border: '2px solid rgba(255, 255, 255, 0.3)',
+                              '&:hover': {
+                                boxShadow: '0 0 0 8px rgba(138, 180, 248, 0.16)',
+                              },
+                            },
+                            '& .MuiSlider-track': {
+                              backgroundColor: 'var(--primary-color)',
+                            },
+                            '& .MuiSlider-rail': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            },
+                          }}
+                        />
+                      </Box>
+
+                      {/* Border Radius */}
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
+                          Border Radius: {glassConfig.borderRadius}px
+                        </Typography>
+                        <Slider
+                          value={glassConfig.borderRadius}
+                          onChange={(_, value) => onGlassConfigChange({ borderRadius: value as number })}
+                          min={0}
+                          max={32}
+                          step={1}
+                          sx={{
+                            color: 'var(--primary-color)',
+                            '& .MuiSlider-thumb': {
+                              backgroundColor: 'var(--primary-color)',
+                              border: '2px solid rgba(255, 255, 255, 0.3)',
+                              '&:hover': {
+                                boxShadow: '0 0 0 8px rgba(138, 180, 248, 0.16)',
+                              },
+                            },
+                            '& .MuiSlider-track': {
+                              backgroundColor: 'var(--primary-color)',
+                            },
+                            '& .MuiSlider-rail': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            },
+                          }}
+                        />
+                      </Box>
+
+                      {/* Shadow Intensity */}
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
+                          Shadow Intensity: {Math.round(glassConfig.shadowIntensity * 100)}%
+                        </Typography>
+                        <Slider
+                          value={glassConfig.shadowIntensity}
+                          onChange={(_, value) => onGlassConfigChange({ shadowIntensity: value as number })}
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          sx={{
+                            color: 'var(--primary-color)',
+                            '& .MuiSlider-thumb': {
+                              backgroundColor: 'var(--primary-color)',
+                              border: '2px solid rgba(255, 255, 255, 0.3)',
+                              '&:hover': {
+                                boxShadow: '0 0 0 8px rgba(138, 180, 248, 0.16)',
+                              },
+                            },
+                            '& .MuiSlider-track': {
+                              backgroundColor: 'var(--primary-color)',
+                            },
+                            '& .MuiSlider-rail': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            },
+                          }}
+                        />
+                      </Box>
+
+                      {/* Saturation */}
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
+                          Saturation: {glassConfig.saturation?.toFixed(1) || '1.8'}
+                        </Typography>
+                        <Slider
+                          value={glassConfig.saturation || 1.8}
+                          onChange={(_, value) => onGlassConfigChange({ saturation: value as number })}
+                          min={0.5}
+                          max={3}
+                          step={0.1}
+                          sx={{
+                            color: 'var(--primary-color)',
+                            '& .MuiSlider-thumb': {
+                              backgroundColor: 'var(--primary-color)',
+                              border: '2px solid rgba(255, 255, 255, 0.3)',
+                              '&:hover': {
+                                boxShadow: '0 0 0 8px rgba(138, 180, 248, 0.16)',
+                              },
+                            },
+                            '& .MuiSlider-track': {
+                              backgroundColor: 'var(--primary-color)',
+                            },
+                            '& .MuiSlider-rail': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            },
+                          }}
+                        />
+                      </Box>
+
+                      {/* Brightness */}
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
+                          Brightness: {glassConfig.brightness?.toFixed(1) || '1.1'}
+                        </Typography>
+                        <Slider
+                          value={glassConfig.brightness || 1.1}
+                          onChange={(_, value) => onGlassConfigChange({ brightness: value as number })}
+                          min={0.5}
+                          max={2}
+                          step={0.1}
+                          sx={{
+                            color: 'var(--primary-color)',
+                            '& .MuiSlider-thumb': {
+                              backgroundColor: 'var(--primary-color)',
+                              border: '2px solid rgba(255, 255, 255, 0.3)',
+                              '&:hover': {
+                                boxShadow: '0 0 0 8px rgba(138, 180, 248, 0.16)',
+                              },
+                            },
+                            '& .MuiSlider-track': {
+                              backgroundColor: 'var(--primary-color)',
+                            },
+                            '& .MuiSlider-rail': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            },
+                          }}
+                        />
+                      </Box>
+
+                      {/* Contrast */}
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
+                          Contrast: {glassConfig.contrast?.toFixed(1) || '1.2'}
+                        </Typography>
+                        <Slider
+                          value={glassConfig.contrast || 1.2}
+                          onChange={(_, value) => onGlassConfigChange({ contrast: value as number })}
+                          min={0.5}
+                          max={2}
+                          step={0.1}
+                          sx={{
+                            color: 'var(--primary-color)',
+                            '& .MuiSlider-thumb': {
+                              backgroundColor: 'var(--primary-color)',
+                              border: '2px solid rgba(255, 255, 255, 0.3)',
+                              '&:hover': {
+                                boxShadow: '0 0 0 8px rgba(138, 180, 248, 0.16)',
+                              },
+                            },
+                            '& .MuiSlider-track': {
+                              backgroundColor: 'var(--primary-color)',
+                            },
+                            '& .MuiSlider-rail': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            },
+                          }}
+                        />
+                      </Box>
+                    </Box>
+
+                    {/* Glass Presets */}
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="body2" gutterBottom sx={{ 
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        fontWeight: 500,
+                        mb: 2,
+                        textAlign: 'left'
+                      }}>
+                        Glass Effect Presets
+                      </Typography>
+                      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
+                        {[
+                          { key: 'minimal', name: 'Minimal', desc: 'Subtle glass effect' },
+                          { key: 'subtle', name: 'Subtle', desc: 'Light glass effect' },
+                          { key: 'moderate', name: 'Moderate', desc: 'Balanced glass effect' },
+                          { key: 'intense', name: 'Intense', desc: 'Strong glass effect' }
+                        ].map((preset) => (
+                          <Button
+                            key={preset.key}
+                            variant="outlined"
+                            fullWidth
+                            size="small"
+                            onClick={() => {
+                              const presets = {
+                                minimal: { blurIntensity: 4, opacity: 0.03, borderOpacity: 0.05, shadowIntensity: 0.1, borderRadius: 8, saturation: 1.2, brightness: 1.0, contrast: 1.0 },
+                                subtle: { blurIntensity: 8, opacity: 0.05, borderOpacity: 0.1, shadowIntensity: 0.2, borderRadius: 12, saturation: 1.5, brightness: 1.05, contrast: 1.1 },
+                                moderate: { blurIntensity: 12, opacity: 0.1, borderOpacity: 0.2, shadowIntensity: 0.3, borderRadius: 16, saturation: 1.8, brightness: 1.1, contrast: 1.2 },
+                                intense: { blurIntensity: 20, opacity: 0.15, borderOpacity: 0.3, shadowIntensity: 0.4, borderRadius: 20, saturation: 2.2, brightness: 1.2, contrast: 1.3 }
+                              };
+                              onGlassConfigChange(presets[preset.key as keyof typeof presets]);
+                            }}
+                            sx={{
+                              borderColor: 'rgba(255, 255, 255, 0.3)',
+                              color: 'rgba(255, 255, 255, 0.8)',
+                              textTransform: 'none',
+                              '&:hover': {
+                                borderColor: 'var(--primary-color)',
+                                backgroundColor: 'rgba(138, 180, 248, 0.1)',
+                              }
+                            }}
+                          >
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
+                                {preset.name}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem' }}>
+                                {preset.desc}
+                              </Typography>
+                            </Box>
+                          </Button>
+                        ))}
+                      </Box>
+                    </Box>
+
+                    {/* Reset to Default */}
+                    <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                      <Button
+                        variant="outlined"
+                        onClick={() => {
+                          onColorPaletteChange('purpleLove');
+                          onGlassConfigChange({
+                            blurIntensity: 12,
+                            opacity: 0.1,
+                            borderOpacity: 0.2,
+                            shadowIntensity: 0.3,
+                            borderRadius: 16,
+                            saturation: 1.8,
+                            brightness: 1.1,
+                            contrast: 1.2,
+                          });
+                        }}
+                        sx={{
+                          borderColor: 'rgba(255, 255, 255, 0.3)',
+                          color: 'rgba(255, 255, 255, 0.8)',
+                          '&:hover': {
+                            borderColor: 'var(--primary-color)',
+                            backgroundColor: 'rgba(138, 180, 248, 0.1)',
+                          }
+                        }}
+                      >
+                        Reset to Default Theme
+                      </Button>
                     </Box>
                   </motion.div>
                 </TabPanel>
