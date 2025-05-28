@@ -12,14 +12,14 @@ export interface GlassThemeConfig {
 }
 
 export const defaultGlassConfig: GlassThemeConfig = {
-  blurIntensity: 12,
-  opacity: 0.1,
+  blurIntensity: 4,
+  opacity: 0.03,
   borderOpacity: 0.2,
-  shadowIntensity: 0.3,
-  borderRadius: 16,
-  saturation: 1.8,
-  brightness: 1.1,
-  contrast: 1.2,
+  shadowIntensity: 0.1,
+  borderRadius: 22,
+  saturation: 1.2,
+  brightness: 1.0,
+  contrast: 1.0,
 };
 
 export const applyColorPalette = (palette: ColorPalette, glassConfig: GlassThemeConfig = defaultGlassConfig) => {
@@ -351,7 +351,7 @@ export const glassPresets = {
     opacity: 0.03,
     borderOpacity: 0.05,
     shadowIntensity: 0.1,
-    borderRadius: 8,
+    borderRadius: 22,
     saturation: 1.2,
     brightness: 1.0,
     contrast: 1.0,

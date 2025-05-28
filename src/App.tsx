@@ -478,7 +478,7 @@ const App = () => {
       localStorage.removeItem('customWallpaper'); // Remove old storage
       return oldCustomWallpaper;
     }
-    return localStorage.getItem('selectedWallpaper') || '/wallpapers/forest.jpg';
+    return localStorage.getItem('selectedWallpaper') || '/wallpapers/default.jpg';
   });
   const [userName, setUserName] = useState<string>(() => {
       return localStorage.getItem('userName') || 'Mohammad';
@@ -525,14 +525,14 @@ const App = () => {
     // Default visibility based on the logged layout (all 10 widgets visible)
     return {
       quicklinks: true,
-      clock: true, // Clock is visible in the logged layout
+      clock: false, 
       weather: true,
       calendar: true,
       music: true,
       rss: true,
-      github: true,
+      github: false,
       timer: true,
-      browserhistory: true, // Browser History widget - visible in logged layout
+      browserhistory: false, // Browser History widget - visible in logged layout
       notesreminders: true, // Notes, Reminders & Todos widget - visible in logged layout
     };
   });
@@ -631,18 +631,20 @@ const App = () => {
     if (storedLayouts) {
       return JSON.parse(storedLayouts);
     }
-    // Layout based on the logged positions from Edit Mode Saved
+    // Layout and heights matching the image
     return {
-      weather:        { i: 'weather',        x: 0,  y: 0,  w: 3, h: 8 },
-      quicklinks:     { i: 'quicklinks',     x: 3,  y: 0,  w: 6, h: 4 },
-      clock:          { i: 'clock',          x: 9,  y: 0,  w: 3, h: 4 },
-      notesreminders: { i: 'notesreminders', x: 3,  y: 4,  w: 3, h: 14 },
-      rss:            { i: 'rss',            x: 6,  y: 4,  w: 3, h: 14 },
-      calendar:       { i: 'calendar',       x: 9,  y: 4,  w: 3, h: 8 },
-      music:          { i: 'music',          x: 0,  y: 8,  w: 3, h: 10 },
-      github:         { i: 'github',         x: 9,  y: 12, w: 3, h: 7 },
-      timer:          { i: 'timer',          x: 6,  y: 18, w: 3, h: 8 },
-      browserhistory: { i: 'browserhistory', x: 9,  y: 19, w: 3, h: 11 },
+      weather:        { i: 'weather',        x: 0,  y: 0,  w: 3, h: 12 },
+      quicklinks:     { i: 'quicklinks',     x: 3,  y: 0,  w: 6, h: 6 },
+      github:         { i: 'github',         x: 9,  y: 0,  w: 3, h: 14 },
+
+      music:          { i: 'music',          x: 0,  y: 12, w: 3, h: 14 },
+      notesreminders: { i: 'notesreminders', x: 3,  y: 6,  w: 3, h: 20 },
+      rss:            { i: 'rss',            x: 6,  y: 6,  w: 3, h: 20 },
+      browserhistory: { i: 'browserhistory', x: 9,  y: 11, w: 3, h: 15 },
+      
+      clock:          { i: 'clock',          x: 3,  y: 26, w: 3, h: 6 },
+      calendar:       { i: 'calendar',       x: 9,  y: 0,  w: 3, h: 14 },
+      timer:          { i: 'timer',          x: 9,  y: 26, w: 3, h: 12 },
     };
   });
 
@@ -694,6 +696,19 @@ const App = () => {
         if (localVisibility) setWidgetVisibility(JSON.parse(localVisibility));
     }
 
+    // Ensure a valid wallpaper is set
+    const validateAndSetWallpaper = () => {
+      const storedWallpaper = localStorage.getItem('selectedWallpaper');
+      if (!storedWallpaper) {
+        // No wallpaper stored, set default
+        const defaultWallpaper = '/wallpapers/default.jpg';
+        setCurrentWallpaper(defaultWallpaper);
+        localStorage.setItem('selectedWallpaper', defaultWallpaper);
+      }
+    };
+    
+    validateAndSetWallpaper();
+
     // Log initial layout state
     setTimeout(() => {
       logWidgetLayouts(widgetLayouts, 'App Initialization');
@@ -732,7 +747,21 @@ const App = () => {
     if (!currentWallpaper.startsWith('data:image/')) {
       localStorage.setItem('selectedWallpaper', currentWallpaper);
     }
-    document.body.style.backgroundImage = `url(${currentWallpaper})`;
+    
+    // Set background image with error handling
+    const img = new Image();
+    img.onload = () => {
+      document.body.style.backgroundImage = `url(${currentWallpaper})`;
+    };
+    img.onerror = () => {
+      // If wallpaper fails to load, fallback to default
+      console.warn(`Failed to load wallpaper: ${currentWallpaper}, falling back to default`);
+      const defaultWallpaper = '/wallpapers/default.jpg';
+      setCurrentWallpaper(defaultWallpaper);
+      localStorage.setItem('selectedWallpaper', defaultWallpaper);
+      document.body.style.backgroundImage = `url(${defaultWallpaper})`;
+    };
+    img.src = currentWallpaper;
   }, [currentWallpaper]);
 
   useEffect(() => {
@@ -917,18 +946,21 @@ const App = () => {
 
   // Store original widget positions to restore when re-enabled
   const [originalWidgetLayouts] = useState<Record<string, WidgetLayout>>(() => {
-    // Layout based on the logged positions from Edit Mode Saved (todo merged into notesreminders)
+    // Layout and heights matching the image
     return {
-      weather:        { i: 'weather',        x: 0,  y: 0,  w: 3, h: 8 },
-      quicklinks:     { i: 'quicklinks',     x: 3,  y: 0,  w: 6, h: 4 },
-      clock:          { i: 'clock',          x: 9,  y: 0,  w: 3, h: 4 },
-      notesreminders: { i: 'notesreminders', x: 3,  y: 4,  w: 3, h: 14 },
-      rss:            { i: 'rss',            x: 6,  y: 4,  w: 3, h: 14 },
-      calendar:       { i: 'calendar',       x: 9,  y: 4,  w: 3, h: 8 },
-      music:          { i: 'music',          x: 0,  y: 8,  w: 3, h: 10 },
-      github:         { i: 'github',         x: 9,  y: 12, w: 3, h: 7 },
-      timer:          { i: 'timer',          x: 6,  y: 18, w: 3, h: 8 },
-      browserhistory: { i: 'browserhistory', x: 9,  y: 19, w: 3, h: 10 },
+      weather:        { i: 'weather',        x: 0,  y: 0,  w: 3, h: 12 },
+      quicklinks:     { i: 'quicklinks',     x: 3,  y: 0,  w: 6, h: 6 },
+      github:         { i: 'github',         x: 9,  y: 0,  w: 3, h: 11 },
+
+      music:          { i: 'music',          x: 0,  y: 12, w: 3, h: 14 },
+      notesreminders: { i: 'notesreminders', x: 3,  y: 6,  w: 3, h: 20 },
+      rss:            { i: 'rss',            x: 6,  y: 6,  w: 3, h: 20 },
+      browserhistory: { i: 'browserhistory', x: 9,  y: 11, w: 3, h: 15 },
+      
+      // Widgets not in the screenshot, placed below the ones above, starting at y=26
+      clock:          { i: 'clock',          x: 3,  y: 26, w: 3, h: 6 },
+      calendar:       { i: 'calendar',       x: 6,  y: 26, w: 3, h: 12 },
+      timer:          { i: 'timer',          x: 9,  y: 26, w: 3, h: 8 },
     };
   });
 
@@ -1388,11 +1420,13 @@ const App = () => {
   return (
     <Box sx={{
       minHeight: '100vh',
-      p: 4, // Padding around the content
+      maxHeight: '100vh', // Prevent vertical overflow
+      p: 2, // Reduced padding to save space
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center', // Center items horizontally
       position: 'relative', // Add relative positioning to parent
+      overflow: 'hidden', // Prevent scrolling on main container
     }}>
       {/* Country Flag - Top Left */}
       <CountryFlag />
@@ -1624,7 +1658,12 @@ const App = () => {
       )}
 
       {/* Widget Grid - Using WidgetGrid component */}
-      <Box sx={{ width: '100%' }}>
+      <Box sx={{ 
+        width: '100%', 
+        flex: 1, 
+        overflow: 'auto', // Allow scrolling only within the grid area
+        maxHeight: 'calc(100vh - 200px)', // Reserve space for header elements
+      }}>
         <WidgetGrid 
           items={gridItems}
           onLayoutChange={handleLayoutChange}

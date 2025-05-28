@@ -255,11 +255,14 @@ body {
   background-color: #1a1a1a;
   color: #ffffff;
   overflow-x: hidden;
+  overflow-y: auto; /* Allow vertical scrolling only when needed */
+  height: 100vh; /* Constrain body height to viewport */
 }
 
 .widget-grid {
   width: 100%;
-  min-height: 100vh;
+  min-height: auto; /* Don't force minimum height */
+  height: auto; /* Auto-size to content */
 }
 
 .react-resizable-handle {
@@ -333,6 +336,12 @@ body {
 }
 
 /* React Grid Layout Styles */
+.react-grid-layout {
+  position: relative;
+  height: auto !important; /* Override any fixed height */
+  min-height: auto !important; /* Don't force minimum height */
+}
+
 .react-grid-item {
   transition: all 200ms ease;
   transition-property: left, top;

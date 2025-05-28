@@ -20,18 +20,19 @@ import {
   MenuItem,
   Switch,
   FormControlLabel,
-  Tabs,
-  Tab,
   Alert,
   Snackbar,
   CircularProgress,
   Tooltip,
-  Divider,
   Card,
   CardContent,
   Badge,
   ListItemIcon,
   Checkbox,
+  Fab,
+  Menu,
+  Divider,
+  InputAdornment,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -41,7 +42,7 @@ import {
   Cancel as CancelIcon,
   Notifications as NotificationsIcon,
   Event as EventIcon,
-  Note as NoteIcon,
+  EditNote as NoteIcon,
   Settings as SettingsIcon,
   Sync as SyncIcon,
   Security as SecurityIcon,
@@ -53,41 +54,47 @@ import {
   Flag as PriorityIcon,
   RadioButtonUnchecked as UncheckedIcon,
   Assignment as TodoIcon,
+  FilterList as FilterIcon,
+  MoreVert as MoreIcon,
+  Schedule as ScheduleIcon,
+  Today as TodayIcon,
+  Work as WorkIcon,
+  Person as PersonIcon,
+  ShoppingCart as ShoppingCartIcon,
+  LocalHospital as HealthIcon,
+
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, isToday, isTomorrow, isPast, addDays, parseISO } from 'date-fns';
 
 // Types
-interface Note {
+interface BaseItem {
   id: string;
   title: string;
-  content: string;
+  content?: string;
   createdAt: Date;
   updatedAt: Date;
-  tags: string[];
   priority: 'low' | 'medium' | 'high';
   category: 'personal' | 'work' | 'shopping' | 'health' | 'other';
+  completed?: boolean;
+  type: 'note' | 'todo';
 }
 
-interface Reminder {
-  id: string;
-  title: string;
-  description?: string;
-  dueDate: Date;
+interface Note extends BaseItem {
+  type: 'note';
+  tags: string[];
+}
+
+interface Todo extends BaseItem {
+  type: 'todo';
+  dueDate?: Date;
   completed: boolean;
-  priority: 'low' | 'medium' | 'high';
-  category: 'personal' | 'work' | 'shopping' | 'health' | 'other';
-  source: 'local' | 'google';
+  source?: 'local' | 'google';
   externalId?: string;
   notificationSent?: boolean;
 }
 
-// Add Todo interface
-interface Todo {
-  id: number;
-  text: string;
-  completed: boolean;
-}
+type UnifiedItem = Note | Todo;
 
 interface GoogleCalendarEvent {
   id: string;
@@ -121,7 +128,6 @@ class SecureStorage {
   
   static async encrypt(data: string): Promise<string> {
     try {
-      // Simple XOR encryption for demo - in production use Web Crypto API
       const key = this.ENCRYPTION_KEY;
       let encrypted = '';
       for (let i = 0; i < data.length; i++) {
@@ -130,7 +136,7 @@ class SecureStorage {
       return btoa(encrypted);
     } catch (error) {
       console.error('Encryption failed:', error);
-      return data; // Fallback to unencrypted
+      return data;
     }
   }
   
@@ -145,7 +151,7 @@ class SecureStorage {
       return decrypted;
     } catch (error) {
       console.error('Decryption failed:', error);
-      return encryptedData; // Fallback to original
+      return encryptedData;
     }
   }
   
@@ -192,7 +198,10 @@ class SecureStorage {
 
 // OAuth 2.0 Security Implementation
 class OAuth2Security {
-  private static readonly GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+  private static getGoogleClientId(userClientId?: string): string {
+    return import.meta.env.VITE_GOOGLE_CLIENT_ID || userClientId || '';
+  }
+  
   private static readonly GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
   public static readonly REDIRECT_URI = (typeof chrome !== 'undefined' && chrome.identity) ? chrome.identity.getRedirectURL() : 'http://localhost:3000/oauth/callback';
   
@@ -233,7 +242,7 @@ class OAuth2Security {
       .replace(/=/g, '');
   }
   
-  static async authenticateGoogle(): Promise<{ accessToken: string; refreshToken?: string; expiresAt: number } | null> {
+  static async authenticateGoogle(userClientId?: string): Promise<{ accessToken: string; refreshToken?: string; expiresAt: number } | null> {
     try {
       const { codeVerifier, codeChallenge } = await this.generatePKCE();
       const state = this.generateRandomString(32);
@@ -243,7 +252,7 @@ class OAuth2Security {
       await SecureStorage.setSecureItem('oauth_state', state);
       
       const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-      authUrl.searchParams.set('client_id', this.GOOGLE_CLIENT_ID);
+      authUrl.searchParams.set('client_id', this.getGoogleClientId(userClientId));
       authUrl.searchParams.set('redirect_uri', this.REDIRECT_URI);
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('scope', this.GOOGLE_SCOPES);
@@ -271,7 +280,7 @@ class OAuth2Security {
           );
         });
         
-        return this.handleAuthCallback(responseUrl);
+        return this.handleAuthCallback(responseUrl, userClientId);
       } else {
         // Web OAuth flow
         window.open(authUrl.toString(), '_blank');
@@ -283,7 +292,7 @@ class OAuth2Security {
     }
   }
   
-  private static async handleAuthCallback(responseUrl: string): Promise<{ accessToken: string; refreshToken?: string; expiresAt: number } | null> {
+  private static async handleAuthCallback(responseUrl: string, userClientId?: string): Promise<{ accessToken: string; refreshToken?: string; expiresAt: number } | null> {
     try {
       const url = new URL(responseUrl);
       const code = url.searchParams.get('code');
@@ -317,7 +326,7 @@ class OAuth2Security {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          client_id: this.GOOGLE_CLIENT_ID,
+          client_id: this.getGoogleClientId(userClientId),
           code,
           code_verifier: codeVerifier,
           grant_type: 'authorization_code',
@@ -354,7 +363,7 @@ class OAuth2Security {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          client_id: this.GOOGLE_CLIENT_ID,
+          client_id: this.getGoogleClientId(),
           refresh_token: refreshToken,
           grant_type: 'refresh_token',
         }),
@@ -418,10 +427,7 @@ const itemVariants = {
 
 const NotesReminders: React.FC = () => {
   // State management
-  const [activeTab, setActiveTab] = useState(0);
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [todos, setTodos] = useState<Todo[]>([]);
+  const [items, setItems] = useState<UnifiedItem[]>([]);
   const [authState, setAuthState] = useState<AuthState>({
     google: { isAuthenticated: false }
   });
@@ -436,19 +442,19 @@ const NotesReminders: React.FC = () => {
   // UI state
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
-  const [editingItem, setEditingItem] = useState<Note | Reminder | null>(null);
+  const [editingItem, setEditingItem] = useState<UnifiedItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [filterType, setFilterType] = useState<'note' | 'todo'>('todo');
+  const [quickAddText, setQuickAddText] = useState('');
+  const [quickAddType, setQuickAddType] = useState<'note' | 'todo'>('todo');
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' | 'info' }>({
     open: false,
     message: '',
     severity: 'info'
   });
   
-  // State for settings dialog inputs
-  const [settingsActiveTab, setSettingsActiveTab] = useState(0); // Tabs within Settings Dialog
-  
-  // Form state
+  // Form state for add dialog
   const [newItemTitle, setNewItemTitle] = useState('');
   const [newItemContent, setNewItemContent] = useState('');
   const [newItemDueDate, setNewItemDueDate] = useState('');
@@ -456,14 +462,15 @@ const NotesReminders: React.FC = () => {
   const [newItemCategory, setNewItemCategory] = useState<'personal' | 'work' | 'shopping' | 'health' | 'other'>('personal');
   const [newItemTags, setNewItemTags] = useState<string[]>([]);
   
-  // Todo form state
-  const [newTodo, setNewTodo] = useState('');
+  // Google Client ID state for user configuration
+  const [googleClientId, setGoogleClientId] = useState<string>('');
+  const [showGoogleSetup, setShowGoogleSetup] = useState(false);
   
   // Refs
   const autoLogoutTimer = useRef<NodeJS.Timeout | null>(null);
   const reauthTimer = useRef<NodeJS.Timeout | null>(null);
   
-  const GOOGLE_CLIENT_ID_IS_SET = !!(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+  const GOOGLE_CLIENT_ID_IS_SET = !!(import.meta.env.VITE_GOOGLE_CLIENT_ID || googleClientId);
   
   // Load data on mount
   useEffect(() => {
@@ -479,45 +486,77 @@ const NotesReminders: React.FC = () => {
   // Save data when state changes
   useEffect(() => {
     saveData();
-  }, [notes, reminders, todos, authState, securityConfig]);
+  }, [items, authState, securityConfig]);
   
   const loadData = async () => {
     try {
       setLoading(true);
       
-      const [savedNotes, savedReminders, savedTodos, savedAuth, savedSecurity] = await Promise.all([
-        SecureStorage.getSecureItem('notes-reminders-notes'),
-        SecureStorage.getSecureItem('notes-reminders-reminders'),
-        SecureStorage.getSecureItem('notes-reminders-todos'),
+      const [savedItems, savedAuth, savedSecurity, savedGoogleClientId] = await Promise.all([
+        SecureStorage.getSecureItem('notes-reminders-unified'),
         SecureStorage.getSecureItem('notes-reminders-auth'),
-        SecureStorage.getSecureItem('notes-reminders-security')
+        SecureStorage.getSecureItem('notes-reminders-security'),
+        SecureStorage.getSecureItem('notes-reminders-google-client-id')
       ]);
       
-      if (savedNotes) {
-        setNotes(savedNotes.map((note: any) => ({
-          ...note,
-          createdAt: new Date(note.createdAt),
-          updatedAt: new Date(note.updatedAt)
+      if (savedItems) {
+        setItems(savedItems.map((item: any) => ({
+          ...item,
+          createdAt: new Date(item.createdAt),
+          updatedAt: new Date(item.updatedAt),
+          ...(item.type === 'todo' && item.dueDate && { dueDate: new Date(item.dueDate) }),
+          // Convert old reminders to todos
+          ...(item.type === 'reminder' && { type: 'todo', completed: item.completed || false, dueDate: item.dueDate ? new Date(item.dueDate) : undefined })
         })));
-      }
-      
-      if (savedReminders) {
-        setReminders(savedReminders.map((reminder: any) => ({
-          ...reminder,
-          dueDate: new Date(reminder.dueDate)
-        })));
-      }
-      
-      if (savedTodos) {
-        setTodos(savedTodos);
       } else {
-        // Set default todos if none exist
-        const defaultTodos = [
-          { id: 1, text: 'Write design document', completed: true },
-          { id: 2, text: 'Call caterer', completed: false },
-          { id: 3, text: 'Read user feedback', completed: false },
+        // Set default items if none exist
+        const defaultItems: UnifiedItem[] = [
+          {
+            id: 'todo-1',
+            type: 'todo',
+            title: 'Write design document',
+            completed: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            priority: 'high',
+            category: 'work'
+          },
+          {
+            id: 'todo-2',
+            type: 'todo',
+            title: 'Call caterer',
+            completed: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            priority: 'medium',
+            category: 'personal'
+          },
+          {
+            id: 'todo-3',
+            type: 'todo',
+            title: 'Team meeting',
+            content: 'Discuss Q1 goals and project roadmap',
+            dueDate: addDays(new Date(), 1),
+            completed: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            priority: 'high',
+            category: 'work',
+            source: 'local'
+          },
+          {
+            id: 'note-1',
+            type: 'note',
+            title: 'Project Ideas',
+            content: 'New widget concepts for the dashboard. Consider weather integration and calendar sync.',
+            tags: ['ideas', 'projects'],
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            priority: 'medium',
+            category: 'work'
+          }
         ];
-        setTodos(defaultTodos);
+        setItems(defaultItems);
       }
       
       if (savedAuth) {
@@ -526,6 +565,10 @@ const NotesReminders: React.FC = () => {
       
       if (savedSecurity) {
         setSecurityConfig(savedSecurity);
+      }
+      
+      if (savedGoogleClientId) {
+        setGoogleClientId(savedGoogleClientId);
       }
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -538,11 +581,10 @@ const NotesReminders: React.FC = () => {
   const saveData = async () => {
     try {
       await Promise.all([
-        SecureStorage.setSecureItem('notes-reminders-notes', notes, securityConfig.enableEncryption),
-        SecureStorage.setSecureItem('notes-reminders-reminders', reminders, securityConfig.enableEncryption),
-        SecureStorage.setSecureItem('notes-reminders-todos', todos, securityConfig.enableEncryption),
-        SecureStorage.setSecureItem('notes-reminders-auth', authState, true), // Always encrypt auth data
-        SecureStorage.setSecureItem('notes-reminders-security', securityConfig, false)
+        SecureStorage.setSecureItem('notes-reminders-unified', items, securityConfig.enableEncryption),
+        SecureStorage.setSecureItem('notes-reminders-auth', authState, true),
+        SecureStorage.setSecureItem('notes-reminders-security', securityConfig, false),
+        SecureStorage.setSecureItem('notes-reminders-google-client-id', googleClientId, true)
       ]);
     } catch (error) {
       console.error('Failed to save data:', error);
@@ -575,41 +617,6 @@ const NotesReminders: React.FC = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
   
-  const handleGoogleAuth = async () => {
-    try {
-      setLoading(true);
-      const result = await OAuth2Security.authenticateGoogle();
-      
-      if (result) {
-        setAuthState(prev => ({
-          ...prev,
-          google: {
-            isAuthenticated: true,
-            accessToken: result.accessToken,
-            refreshToken: result.refreshToken,
-            expiresAt: result.expiresAt
-          }
-        }));
-        showSnackbar('Google Calendar connected successfully', 'success');
-        await syncGoogleCalendar();
-      } else {
-        throw new Error('Authentication failed');
-      }
-    } catch (error) {
-      console.error('Google authentication failed:', error);
-      setAuthState(prev => ({
-        ...prev,
-        google: {
-          isAuthenticated: false,
-          error: error instanceof Error ? error.message : 'Authentication failed'
-        }
-      }));
-      showSnackbar('Google authentication failed', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
   const handleLogout = () => {
     setAuthState({
       google: { isAuthenticated: false }
@@ -619,150 +626,86 @@ const NotesReminders: React.FC = () => {
     if (reauthTimer.current) clearTimeout(reauthTimer.current);
   };
   
-  const syncGoogleCalendar = async () => {
-    if (!authState.google.isAuthenticated || !authState.google.accessToken) return;
-    
-    try {
-      setSyncing(true);
-      
-      // Check if token needs refresh
-      let accessToken = authState.google.accessToken;
-      if (authState.google.expiresAt && Date.now() >= authState.google.expiresAt) {
-        if (authState.google.refreshToken) {
-          const refreshResult = await OAuth2Security.refreshGoogleToken(authState.google.refreshToken);
-          if (refreshResult) {
-            accessToken = refreshResult.accessToken;
-            setAuthState(prev => ({
-              ...prev,
-              google: {
-                ...prev.google,
-                accessToken: refreshResult.accessToken,
-                expiresAt: refreshResult.expiresAt
-              }
-            }));
-          } else {
-            throw new Error('Token refresh failed');
-          }
-        } else {
-          throw new Error('Token expired and no refresh token available');
-        }
-      }
-      
-      const events = await GoogleCalendarAPI.getEvents(accessToken);
-      
-      // Convert events to reminders
-      const newReminders: Reminder[] = events.map(event => ({
-        id: `google-${event.id}`,
-        title: event.summary,
-        description: event.description,
-        dueDate: new Date(event.start.dateTime || event.start.date || Date.now()),
-        completed: false,
-        priority: 'medium',
-        category: 'work',
-        source: 'google',
-        externalId: event.id
-      }));
-      
-      // Merge with existing reminders (avoid duplicates)
-      setReminders(prev => {
-        const filtered = prev.filter(r => r.source !== 'google');
-        return [...filtered, ...newReminders];
-      });
-      
-      showSnackbar(`Synced ${newReminders.length} events from Google Calendar`, 'success');
-    } catch (error) {
-      console.error('Google Calendar sync failed:', error);
-      showSnackbar('Google Calendar sync failed', 'error');
-    } finally {
-      setSyncing(false);
-    }
-  };
-  
-  const handleAddItem = () => {
-    if (!newItemTitle.trim()) return;
+  // Quick add functionality
+  const handleQuickAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickAddText.trim()) return;
     
     const now = new Date();
+    let newItem: UnifiedItem;
     
-    if (activeTab === 0) {
-      // Add note
-      const newNote: Note = {
+    if (quickAddType === 'note') {
+      newItem = {
         id: `note-${Date.now()}`,
-        title: newItemTitle,
-        content: newItemContent,
+        type: 'note',
+        title: quickAddText,
         createdAt: now,
         updatedAt: now,
-        tags: newItemTags,
-        priority: newItemPriority,
-        category: newItemCategory
-      };
-      
-      setNotes(prev => [newNote, ...prev]);
-    } else if (activeTab === 1) {
-      // Add reminder
-      const newReminder: Reminder = {
-        id: `reminder-${Date.now()}`,
-        title: newItemTitle,
-        description: newItemContent,
-        dueDate: newItemDueDate ? new Date(newItemDueDate) : addDays(now, 1),
+        priority: 'medium',
+        category: 'personal',
+        tags: []
+      } as Note;
+    } else {
+      newItem = {
+        id: `todo-${Date.now()}`,
+        type: 'todo',
+        title: quickAddText,
+        createdAt: now,
+        updatedAt: now,
+        priority: 'medium',
+        category: 'personal',
         completed: false,
-        priority: newItemPriority,
-        category: newItemCategory,
-        source: 'local'
-      };
-      
-      setReminders(prev => [newReminder, ...prev]);
+        dueDate: addDays(now, 1)
+      } as Todo;
     }
     
-    // Reset form
-    setNewItemTitle('');
-    setNewItemContent('');
-    setNewItemDueDate('');
-    setNewItemPriority('medium');
-    setNewItemCategory('personal');
-    setNewItemTags([]);
-    setShowAddDialog(false);
+    setItems(prev => [newItem, ...prev]);
+    setQuickAddText('');
+    showSnackbar(`Added successfully`, 'success');
+  };
+  
+  // Filter items
+  const filteredItems = items.filter(item => {
+    const matchesType = item.type === filterType;
+    return matchesType;
+  });
+  
+  // Sort items by priority and date
+  const sortedItems = filteredItems.sort((a, b) => {
+    // Completed items go to bottom
+    if ('completed' in a && 'completed' in b) {
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    }
     
-    showSnackbar(`${activeTab === 0 ? 'Note' : activeTab === 1 ? 'Reminder' : 'Todo'} added successfully`, 'success');
-  };
+    // Priority order
+    const priorityOrder = { high: 3, medium: 2, low: 1 };
+    const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
+    if (priorityDiff !== 0) return priorityDiff;
+    
+    // Date order (newest first for notes, due date for todos)
+    if (a.type === 'todo' && b.type === 'todo') {
+      const aDueDate = (a as Todo).dueDate;
+      const bDueDate = (b as Todo).dueDate;
+      if (aDueDate && bDueDate) {
+        return aDueDate.getTime() - bDueDate.getTime();
+      }
+    }
+    
+    return b.updatedAt.getTime() - a.updatedAt.getTime();
+  });
   
-  // Todo-specific functions
-  const handleAddTodo = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newTodo.trim() === '') return;
-    const newId = todos.length > 0 ? Math.max(...todos.map(t => t.id)) + 1 : 1;
-    setTodos([...todos, { id: newId, text: newTodo, completed: false }]);
-    setNewTodo('');
-    showSnackbar('Todo added successfully', 'success');
-  };
-  
-  const handleToggleTodo = (id: number) => {
-    setTodos(prevTodos =>
-      prevTodos.map(todo =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
-    );
-  };
-  
-  const handleDeleteTodo = (id: number) => {
-    setTodos(prevTodos => prevTodos.filter(todo => todo.id !== id));
-    showSnackbar('Todo deleted', 'success');
+  const handleToggleComplete = (id: string) => {
+    setItems(prev => prev.map(item => {
+      if (item.id === id && ('completed' in item)) {
+        return { ...item, completed: !item.completed, updatedAt: new Date() };
+      }
+      return item;
+    }));
   };
   
   const handleDeleteItem = (id: string) => {
-    if (activeTab === 0) {
-      setNotes(prev => prev.filter(note => note.id !== id));
-    } else if (activeTab === 1) {
-      setReminders(prev => prev.filter(reminder => reminder.id !== id));
-    }
-    showSnackbar(`${activeTab === 0 ? 'Note' : activeTab === 1 ? 'Reminder' : 'Todo'} deleted`, 'success');
-  };
-  
-  const handleToggleReminder = (id: string) => {
-    setReminders(prev =>
-      prev.map(reminder =>
-        reminder.id === id ? { ...reminder, completed: !reminder.completed } : reminder
-      )
-    );
+    setItems(prev => prev.filter(item => item.id !== id));
+    showSnackbar('Deleted', 'success');
   };
   
   const getPriorityColor = (priority: 'low' | 'medium' | 'high') => {
@@ -776,27 +719,45 @@ const NotesReminders: React.FC = () => {
   
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'work': return '💼';
-      case 'personal': return '👤';
-      case 'shopping': return '🛒';
-      case 'health': return '🏥';
-      default: return '📝';
+      case 'work': return <WorkIcon sx={{ fontSize: 14 }} />;
+      case 'personal': return <PersonIcon sx={{ fontSize: 14 }} />;
+      case 'shopping': return <ShoppingCartIcon sx={{ fontSize: 14 }} />;
+      case 'health': return <HealthIcon sx={{ fontSize: 14 }} />;
+      default: return <NoteIcon sx={{ fontSize: 14 }} />;
+    }
+  };
+  
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'note': return <NoteIcon sx={{ fontSize: 16 }} />;
+      case 'todo': return <TodoIcon sx={{ fontSize: 16 }} />;
+      default: return <NoteIcon sx={{ fontSize: 16 }} />;
     }
   };
   
   const formatDueDate = (date: Date) => {
     if (isToday(date)) return 'Today';
     if (isTomorrow(date)) return 'Tomorrow';
-    if (isPast(date)) return `Overdue (${format(date, 'MMM d')})`;
-    return format(date, 'MMM d, yyyy');
+    if (isPast(date)) return `Overdue`;
+    return format(date, 'MMM d');
   };
   
   const getOverdueCount = () => {
-    return reminders.filter(r => !r.completed && isPast(r.dueDate)).length;
+    return items.filter(item => 
+      item.type === 'todo' && 
+      !(item as Todo).completed && 
+      (item as Todo).dueDate &&
+      isPast((item as Todo).dueDate!)
+    ).length;
   };
   
   const getTodayCount = () => {
-    return reminders.filter(r => !r.completed && isToday(r.dueDate)).length;
+    return items.filter(item => 
+      item.type === 'todo' && 
+      !(item as Todo).completed && 
+      (item as Todo).dueDate &&
+      isToday((item as Todo).dueDate!)
+    ).length;
   };
 
   return (
@@ -804,967 +765,559 @@ const NotesReminders: React.FC = () => {
       elevation={0}
       className="glass glass-frosted glass-premium glass-particles"
       sx={{
-        p: 3,
+        p: 2,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         borderRadius: 'var(--radius-lg)',
         position: 'relative',
         overflow: 'hidden',
-
       }}
     >
-      {/* Header */}
+      {/* Simplified Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography
-          variant="h5"
-          component="h2"
-          sx={{
-            fontWeight: 600,
-            letterSpacing: '0.5px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1
-          }}
-        >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <NoteIcon />
-          Notes & Reminders
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Workspace
+          </Typography>
           {getOverdueCount() > 0 && (
-            <Badge badgeContent={getOverdueCount()} color="error" sx={{ ml: 1 }}>
-              <WarningIcon color="error" />
+            <Badge badgeContent={getOverdueCount()} color="error" sx={{ ml: 0.5 }}>
+              <WarningIcon sx={{ fontSize: 16, color: 'error.main' }} />
             </Badge>
           )}
-        </Typography>
-        
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Tooltip title="Sync with external services">
-            <IconButton
-              onClick={() => {
-                syncGoogleCalendar();
-              }}
-              disabled={syncing || !authState.google.isAuthenticated}
-              sx={{ color: 'white' }}
-            >
-              {syncing ? <CircularProgress size={20} /> : <SyncIcon />}
-            </IconButton>
-          </Tooltip>
-          
-          <Tooltip title="Settings">
-            <IconButton
-              onClick={() => setShowSettingsDialog(true)}
-              sx={{ color: 'white' }}
-            >
-              <SettingsIcon />
-            </IconButton>
-          </Tooltip>
-          
-          <Tooltip title="Add new item">
-            <IconButton
-              onClick={() => setShowAddDialog(true)}
-              sx={{ color: 'white' }}
-            >
-              <AddIcon />
-            </IconButton>
-          </Tooltip>
         </Box>
+        
+        <IconButton
+          onClick={() => setShowSettingsDialog(true)}
+          size="small"
+          sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+        >
+          <SettingsIcon sx={{ fontSize: 18 }} />
+        </IconButton>
       </Box>
       
-      {/* Tabs */}
-      <Tabs
-        value={activeTab}
-        onChange={(_, newValue) => setActiveTab(newValue)}
-        sx={{
+      {/* Simplified Quick Add */}
+      <Box 
+        component="form" 
+        onSubmit={handleQuickAdd}
+        sx={{ 
+          display: 'flex', 
+          gap: 0.5, 
           mb: 2,
-          '& .MuiTab-root': {
-            color: 'rgba(255, 255, 255, 0.7)',
-            '&.Mui-selected': {
-              color: 'white',
-            }
-          },
-          '& .MuiTabs-indicator': {
-            backgroundColor: 'var(--primary-color)',
-          }
+          p: 1,
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          borderRadius: 'var(--radius-sm)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
         }}
       >
-        <Tab
-          label={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <NoteIcon />
-              Notes ({notes.length})
-            </Box>
-          }
+        <TextField
+          fullWidth
+          size="small"
+          variant="outlined"
+          value={quickAddText}
+          onChange={(e) => setQuickAddText(e.target.value)}
+          placeholder={`Add ${quickAddType}...`}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                {getTypeIcon(quickAddType)}
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: 'rgba(255, 255, 255, 0.07)',
+              borderRadius: 'var(--radius-sm)',
+              '& fieldset': { border: 'none' },
+              height: 36,
+            },
+            '& .MuiInputBase-input': {
+              color: 'white',
+              fontSize: '0.85rem',
+              '&::placeholder': {
+                color: 'rgba(255, 255, 255, 0.7)',
+                opacity: 1,
+              }
+            }
+          }}
         />
-        <Tab
-          label={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <NotificationsIcon />
-              Reminders ({reminders.filter(r => !r.completed).length})
-              {getTodayCount() > 0 && (
-                <Chip
-                  label={getTodayCount()}
-                  size="small"
-                  color="primary"
-                  sx={{ ml: 0.5, height: 20, fontSize: '0.7rem' }}
-                />
-              )}
-            </Box>
-          }
-        />
-        <Tab
-          label={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <TodoIcon />
-              Todos ({todos.filter(t => !t.completed).length})
-            </Box>
-          }
-        />
-      </Tabs>
+        
+        <Box sx={{ display: 'flex', gap: 0.25 }}>
+          <Button
+            variant={quickAddType === 'note' ? 'contained' : 'outlined'}
+            size="small"
+            onClick={() => setQuickAddType('note')}
+            sx={{
+              minWidth: 32,
+              width: 32,
+              height: 36,
+              p: 0,
+              borderRadius: 'var(--radius-sm)',
+              bgcolor: quickAddType === 'note' ? 'var(--primary-color)' : 'transparent',
+              borderColor: 'rgba(255, 255, 255, 0.2)',
+              color: 'white',
+              '&:hover': { 
+                bgcolor: quickAddType === 'note' ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.1)',
+                borderColor: 'rgba(255, 255, 255, 0.3)'
+              }
+            }}
+          >
+            <NoteIcon sx={{ fontSize: 16 }} />
+          </Button>
+          
+          <Button
+            variant={quickAddType === 'todo' ? 'contained' : 'outlined'}
+            size="small"
+            onClick={() => setQuickAddType('todo')}
+            sx={{
+              minWidth: 32,
+              width: 32,
+              height: 36,
+              p: 0,
+              borderRadius: 'var(--radius-sm)',
+              bgcolor: quickAddType === 'todo' ? 'var(--primary-color)' : 'transparent',
+              borderColor: 'rgba(255, 255, 255, 0.2)',
+              color: 'white',
+              '&:hover': { 
+                bgcolor: quickAddType === 'todo' ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.1)',
+                borderColor: 'rgba(255, 255, 255, 0.3)'
+              }
+            }}
+          >
+            <TodoIcon sx={{ fontSize: 16 }} />
+          </Button>
+        </Box>
+        
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={!quickAddText.trim()}
+          sx={{
+            minWidth: 36,
+            width: 36,
+            height: 36,
+            p: 0,
+            borderRadius: 'var(--radius-sm)',
+            bgcolor: 'var(--primary-color)',
+            '&:hover': { bgcolor: 'var(--primary-color)' }
+          }}
+        >
+          <AddIcon sx={{ fontSize: 18 }} />
+        </Button>
+      </Box>
       
-      {/* Content */}
+      {/* Simple Filter Toggle */}
+      <Box sx={{ display: 'flex', gap: 0.5, mb: 1.5 }}>
+        <Button
+          variant={filterType === 'note' ? 'contained' : 'outlined'}
+          size="small"
+          onClick={() => setFilterType('note')}
+          startIcon={<NoteIcon sx={{ fontSize: 14 }} />}
+          sx={{
+            height: 28,
+            fontSize: '0.75rem',
+            backgroundColor: filterType === 'note' ? 'var(--primary-color)' : 'transparent',
+            borderColor: 'rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            '&:hover': {
+              backgroundColor: filterType === 'note' ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.1)',
+            }
+          }}
+        >
+          Notes
+        </Button>
+        
+        <Button
+          variant={filterType === 'todo' ? 'contained' : 'outlined'}
+          size="small"
+          onClick={() => setFilterType('todo')}
+          startIcon={<TodoIcon sx={{ fontSize: 14 }} />}
+          sx={{
+            height: 28,
+            fontSize: '0.75rem',
+            backgroundColor: filterType === 'todo' ? 'var(--primary-color)' : 'transparent',
+            borderColor: 'rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            '&:hover': {
+              backgroundColor: filterType === 'todo' ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.1)',
+            }
+          }}
+        >
+          Todos
+        </Button>
+      </Box>
+      
+      {/* Items List */}
       <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
-        {activeTab === 0 ? (
-          // Notes Tab
-          <List sx={{ height: '100%', overflow: 'auto', px: 0 }}>
-            <AnimatePresence>
-              {notes.map((note) => (
-                <motion.div
-                  key={note.id}
-                  variants={itemVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
+        <List sx={{ height: '100%', overflow: 'auto', px: 0 }}>
+          <AnimatePresence>
+            {sortedItems.map((item) => (
+              <motion.div
+                key={item.id}
+                variants={itemVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <Card
+                  sx={{
+                    mb: 0.5,
+                    backgroundColor: 'completed' in item && item.completed
+                      ? 'rgba(76, 175, 80, 0.1)'
+                      : item.type === 'todo' && (item as Todo).dueDate && isPast((item as Todo).dueDate!) && !(item as Todo).completed
+                      ? 'rgba(244, 67, 54, 0.1)'
+                      : 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid rgba(255, 255, 255, 0.1)`,
+                    opacity: 'completed' in item && item.completed ? 0.7 : 1,
+                  }}
                 >
-                  <Card
-                    sx={{
-                      mb: 1,
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                      backdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                    }}
-                  >
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'white' }}>
-                          {note.title}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <Chip
-                            label={note.priority}
-                            size="small"
-                            sx={{
-                              backgroundColor: getPriorityColor(note.priority),
-                              color: 'white',
-                              fontSize: '0.7rem',
-                              height: 20
-                            }}
-                          />
+                  <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
+                        {('completed' in item) && (
                           <IconButton
                             size="small"
-                            onClick={() => handleDeleteItem(note.id)}
-                            sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                            onClick={() => handleToggleComplete(item.id)}
+                            sx={{ 
+                              color: item.completed ? '#4caf50' : 'rgba(255, 255, 255, 0.7)',
+                              p: 0.5
+                            }}
                           >
-                            <DeleteIcon fontSize="small" />
+                            {item.completed ? <CheckCircleIcon sx={{ fontSize: 16 }} /> : <UncheckedIcon sx={{ fontSize: 16 }} />}
                           </IconButton>
+                        )}
+                        
+                        <Box sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                          {getTypeIcon(item.type)}
                         </Box>
-                      </Box>
-                      
-                      {note.content && (
+                        
                         <Typography
                           variant="body2"
                           sx={{
-                            color: 'rgba(255, 255, 255, 0.8)',
-                            mb: 1,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical'
+                            fontWeight: 500,
+                            color: 'white',
+                            textDecoration: 'completed' in item && item.completed ? 'line-through' : 'none',
+                            flexGrow: 1,
+                            fontSize: '0.85rem'
                           }}
                         >
-                          {note.content}
-                        </Typography>
-                      )}
-                      
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                          <Chip
-                            label={`${getCategoryIcon(note.category)} ${note.category}`}
-                            size="small"
-                            variant="outlined"
-                            sx={{ fontSize: '0.7rem', height: 20 }}
-                          />
-                          {note.tags.map((tag, index) => (
-                            <Chip
-                              key={index}
-                              label={tag}
-                              size="small"
-                              variant="outlined"
-                              sx={{ fontSize: '0.7rem', height: 20 }}
-                            />
-                          ))}
-                        </Box>
-                        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                          {format(note.updatedAt, 'MMM d')}
+                          {item.title}
                         </Typography>
                       </Box>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-            
-            {notes.length === 0 && (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <NoteIcon sx={{ fontSize: 48, color: 'rgba(255, 255, 255, 0.3)', mb: 2 }} />
-                <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                  No notes yet. Click the + button to add your first note.
-                </Typography>
-              </Box>
-            )}
-          </List>
-        ) : activeTab === 1 ? (
-          // Reminders Tab
-          <List sx={{ height: '100%', overflow: 'auto', px: 0 }}>
-            <AnimatePresence>
-              {reminders
-                .sort((a, b) => {
-                  if (a.completed !== b.completed) return a.completed ? 1 : -1;
-                  return a.dueDate.getTime() - b.dueDate.getTime();
-                })
-                .map((reminder) => (
-                  <motion.div
-                    key={reminder.id}
-                    variants={itemVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                  >
-                    <Card
-                      sx={{
-                        mb: 1,
-                        backgroundColor: reminder.completed
-                          ? 'rgba(76, 175, 80, 0.1)'
-                          : isPast(reminder.dueDate)
-                          ? 'rgba(244, 67, 54, 0.1)'
-                          : 'rgba(255, 255, 255, 0.05)',
-                        backdropFilter: 'blur(10px)',
-                        border: `1px solid ${
-                          reminder.completed
-                            ? 'rgba(76, 175, 80, 0.3)'
-                            : isPast(reminder.dueDate)
-                            ? 'rgba(244, 67, 54, 0.3)'
-                            : 'rgba(255, 255, 255, 0.1)'
-                        }`,
-                        opacity: reminder.completed ? 0.7 : 1,
-                      }}
-                    >
-                      <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleToggleReminder(reminder.id)}
-                              sx={{ color: reminder.completed ? '#4caf50' : 'rgba(255, 255, 255, 0.7)' }}
-                            >
-                              {reminder.completed ? <CheckCircleIcon /> : <AccessTimeIcon />}
-                            </IconButton>
-                            <Typography
-                              variant="subtitle1"
-                              sx={{
-                                fontWeight: 600,
-                                color: 'white',
-                                textDecoration: reminder.completed ? 'line-through' : 'none'
-                              }}
-                            >
-                              {reminder.title}
-                            </Typography>
-                          </Box>
-                          
-                          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-                            <Chip
-                              label={reminder.priority}
-                              size="small"
-                              sx={{
-                                backgroundColor: getPriorityColor(reminder.priority),
-                                color: 'white',
-                                fontSize: '0.7rem',
-                                height: 20
-                              }}
-                            />
-                            {reminder.source === 'google' && (
-                              <Tooltip title="From Google Calendar">
-                                <GoogleIcon sx={{ fontSize: 16, color: 'rgba(255, 255, 255, 0.5)' }} />
-                              </Tooltip>
-                            )}
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeleteItem(reminder.id)}
-                              sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Box>
+                      
+                      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                        <Box sx={{ color: getPriorityColor(item.priority) }}>
+                          <PriorityIcon sx={{ fontSize: 12 }} />
                         </Box>
                         
-                        {reminder.description && (
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              color: 'rgba(255, 255, 255, 0.8)',
-                              mb: 1,
-                              ml: 5,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical'
-                            }}
-                          >
-                            {reminder.description}
-                          </Typography>
-                        )}
+                        {getCategoryIcon(item.category)}
                         
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', ml: 5 }}>
-                          <Chip
-                            label={`${getCategoryIcon(reminder.category)} ${reminder.category}`}
-                            size="small"
-                            variant="outlined"
-                            sx={{ fontSize: '0.7rem', height: 20 }}
-                          />
+                        {item.type === 'todo' && (item as Todo).dueDate && (
                           <Typography
                             variant="caption"
                             sx={{
-                              color: isPast(reminder.dueDate) && !reminder.completed
+                              color: isPast((item as Todo).dueDate!) && !(item as Todo).completed
                                 ? '#f44336'
-                                : isToday(reminder.dueDate)
-                                ? '#ff9800'
                                 : 'rgba(255, 255, 255, 0.5)',
-                              fontWeight: isPast(reminder.dueDate) && !reminder.completed ? 600 : 400
+                              fontSize: '0.7rem',
+                              ml: 0.5
                             }}
                           >
-                            {formatDueDate(reminder.dueDate)}
+                            {formatDueDate((item as Todo).dueDate!)}
                           </Typography>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-            </AnimatePresence>
-            
-            {reminders.length === 0 && (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <NotificationsIcon sx={{ fontSize: 48, color: 'rgba(255, 255, 255, 0.3)', mb: 2 }} />
-                <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                  No reminders yet. Click the + button to add your first reminder.
-                </Typography>
-              </Box>
-            )}
-          </List>
-        ) : (
-          // Todos Tab
-          <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            {/* Todo Add Form */}
-            <Box 
-              component="form" 
-              onSubmit={handleAddTodo} 
-              sx={{ 
-                display: 'flex', 
-                mb: 2,
-                position: 'relative',
-              }}
-            >
-              <TextField
-                fullWidth
-                size="small"
-                variant="outlined"
-                value={newTodo}
-                onChange={(e) => setNewTodo(e.target.value)}
-                placeholder="Add a new task"
-                sx={{ 
-                  mr: 1,
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.07)',
-                    borderRadius: 'var(--radius-md)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    transition: 'all 0.3s ease',
-                    '& fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.15)',
-                      transition: 'border-color 0.3s ease',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: 'var(--primary-color)',
-                      boxShadow: '0 0 15px rgba(138, 180, 248, 0.3)',
-                    }
-                  },
-                  '& .MuiInputBase-input': {
-                    color: 'white',
-                    '&::placeholder': {
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      opacity: 1,
-                    }
-                  }
-                }}
-              />
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                startIcon={<AddIcon />}
-                sx={{ 
-                  whiteSpace: 'nowrap',
-                  borderRadius: 'var(--radius-md)',
-                  bgcolor: 'var(--primary-color)',
-                  boxShadow: '0 4px 10px rgba(138, 180, 248, 0.3)',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    bgcolor: 'var(--primary-color)',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 6px 15px rgba(138, 180, 248, 0.4)',
-                  },
-                  '&:active': {
-                    transform: 'translateY(0)',
-                    boxShadow: '0 2px 5px rgba(138, 180, 248, 0.3)',
-                  }
-                }}
-              >
-                Add
-              </Button>
-            </Box>
-
-            {/* Todo List */}
-            <List sx={{ 
-              overflowY: 'auto', 
-              flexGrow: 1, 
-              px: 0.5,
-              '&::-webkit-scrollbar': {
-                width: '6px',
-              },
-              '&::-webkit-scrollbar-track': {
-                backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                borderRadius: '3px'
-              },
-              '&::-webkit-scrollbar-thumb': {
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                borderRadius: '3px',
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                }
-              },
-            }}>
-              <AnimatePresence>
-                {todos.length === 0 ? (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <ListItem>
-                      <ListItemText 
-                        secondary="No tasks yet. Add one above!" 
-                        sx={{ 
-                          textAlign: 'center', 
-                          color: 'rgba(255, 255, 255, 0.7)',
-                          fontStyle: 'italic' 
-                        }} 
-                      />
-                    </ListItem>
-                  </motion.div>
-                ) : (
-                  todos.map(todo => (
-                    <motion.div
-                      key={todo.id}
-                      initial="hidden"
-                      animate="visible"
-                      exit="exit"
-                      variants={itemVariants}
-                      layout
-                    >
-                      <ListItem
-                        dense
-                        secondaryAction={
-                          <IconButton 
-                            edge="end" 
-                            aria-label="delete" 
-                            onClick={() => handleDeleteTodo(todo.id)} 
-                            size="small"
-                            sx={{
-                              color: 'rgba(255, 255, 255, 0.6)',
-                              transition: 'all 0.2s ease',
-                              '&:hover': {
-                                color: 'rgba(255, 255, 255, 0.9)',
-                                transform: 'scale(1.1)',
-                              }
-                            }}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        }
-                        sx={{ 
-                          transition: 'all 0.3s ease',
-                          '&:hover': { 
-                            bgcolor: 'rgba(255, 255, 255, 0.07)',
-                            transform: 'translateX(4px)'
-                          },
-                          borderRadius: 'var(--radius-sm)',
-                          mb: 0.7,
-                          padding: '8px 16px',
-                          backdropFilter: 'blur(8px)',
-                          WebkitBackdropFilter: 'blur(8px)',
-                          border: todo.completed ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(255, 255, 255, 0.1)',
-                          opacity: todo.completed ? 0.7 : 1,
-                          background: todo.completed ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.05)',
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 'auto', mr: 1.5 }}>
-                          <Checkbox
-                            className={`custom-checkbox ${todo.completed ? 'checked' : ''}`}
-                            edge="start"
-                            checked={todo.completed}
-                            tabIndex={-1}
-                            disableRipple
-                            onClick={() => handleToggleTodo(todo.id)}
-                            icon={
-                              <UncheckedIcon 
-                                sx={{ 
-                                  color: 'rgba(255, 255, 255, 0.7)',
-                                  transition: 'all 0.2s ease',
-                                  '&:hover': {
-                                    color: 'var(--primary-color)',
-                                    transform: 'scale(1.1)'
-                                  }
-                                }} 
-                              />
-                            }
-                            checkedIcon={
-                              <CheckCircleIcon 
-                                sx={{ 
-                                  color: 'var(--primary-color)',
-                                  filter: 'drop-shadow(0 0 3px rgba(138, 180, 248, 0.5))'
-                                }} 
-                              />
-                            }
-                            sx={{
-                              '&.Mui-checked': {
-                                '& svg': {
-                      
-                                }
-                              }
-                            }}
-                          />
-                        </ListItemIcon>
-                        <ListItemText 
-                          primary={todo.text} 
+                        )}
+                        
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteItem(item.id)}
                           sx={{ 
-                            textDecoration: todo.completed ? 'line-through' : 'none',
-                            transition: 'all 0.3s ease',
-                            '& .MuiListItemText-primary': {
-                              color: todo.completed ? 'rgba(255, 255, 255, 0.7)' : 'white',
-                              transition: 'color 0.3s ease',
-                              fontWeight: todo.completed ? 'normal' : 500,
-                              letterSpacing: '0.1px',
-                              lineHeight: 1.4,
-                            }
-                          }} 
-                        />
-                      </ListItem>
-                    </motion.div>
-                  ))
-                )}
-              </AnimatePresence>
-            </List>
-          </Box>
-        )}
-      </Box>
-      
-      {/* Add Item Dialog */}
-      <Dialog
-        open={showAddDialog}
-        onClose={() => setShowAddDialog(false)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            backgroundColor: 'rgba(15, 15, 20, 0.95)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-          }
-        }}
-      >
-        <DialogTitle sx={{ color: 'white' }}>
-          Add New {activeTab === 0 ? 'Note' : activeTab === 1 ? 'Reminder' : 'Todo'}
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Title"
-            fullWidth
-            variant="outlined"
-            value={newItemTitle}
-            onChange={(e) => setNewItemTitle(e.target.value)}
-            sx={{
-              mb: 2,
-              '& .MuiOutlinedInput-root': {
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
-                '&.Mui-focused fieldset': { borderColor: 'var(--primary-color)' }
-              },
-              '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-              '& .MuiInputBase-input': { color: 'white' }
-            }}
-          />
+                            color: 'rgba(255, 255, 255, 0.5)',
+                            p: 0.25,
+                            ml: 0.5
+                          }}
+                        >
+                          <DeleteIcon sx={{ fontSize: 14 }} />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
           
-          <TextField
-            margin="dense"
-            label={activeTab === 0 ? 'Content' : 'Description'}
-            fullWidth
-            multiline
-            rows={3}
-            variant="outlined"
-            value={newItemContent}
-            onChange={(e) => setNewItemContent(e.target.value)}
-            sx={{
-              mb: 2,
-              '& .MuiOutlinedInput-root': {
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
-                '&.Mui-focused fieldset': { borderColor: 'var(--primary-color)' }
-              },
-              '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-              '& .MuiInputBase-input': { color: 'white' }
-            }}
-          />
-          
-          {activeTab === 1 && (
-            <TextField
-              margin="dense"
-              label="Due Date"
-              type="datetime-local"
-              fullWidth
-              variant="outlined"
-              value={newItemDueDate}
-              onChange={(e) => setNewItemDueDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              sx={{
-                mb: 2,
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                  '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
-                  '&.Mui-focused fieldset': { borderColor: 'var(--primary-color)' }
-                },
-                '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                '& .MuiInputBase-input': { color: 'white' }
-              }}
-            />
+          {sortedItems.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <NoteIcon sx={{ fontSize: 48, color: 'rgba(255, 255, 255, 0.3)', mb: 2 }} />
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                {`No ${filterType}s found`}
+              </Typography>
+            </Box>
           )}
-          
-          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Priority</InputLabel>
-              <Select
-                value={newItemPriority}
-                onChange={(e) => setNewItemPriority(e.target.value as any)}
-                sx={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.3)' },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary-color)' },
-                  '& .MuiSelect-select': { color: 'white' }
-                }}
-              >
-                <MenuItem value="low">Low</MenuItem>
-                <MenuItem value="medium">Medium</MenuItem>
-                <MenuItem value="high">High</MenuItem>
-              </Select>
-            </FormControl>
-            
-            <FormControl fullWidth>
-              <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Category</InputLabel>
-              <Select
-                value={newItemCategory}
-                onChange={(e) => setNewItemCategory(e.target.value as any)}
-                sx={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.3)' },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary-color)' },
-                  '& .MuiSelect-select': { color: 'white' }
-                }}
-              >
-                <MenuItem value="personal">Personal</MenuItem>
-                <MenuItem value="work">Work</MenuItem>
-                <MenuItem value="shopping">Shopping</MenuItem>
-                <MenuItem value="health">Health</MenuItem>
-                <MenuItem value="other">Other</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowAddDialog(false)} sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleAddItem}
-            variant="contained"
-            disabled={!newItemTitle.trim()}
-            sx={{
-              bgcolor: 'var(--primary-color)',
-              '&:hover': { bgcolor: 'var(--primary-color)' }
-            }}
-          >
-            Add {activeTab === 0 ? 'Note' : 'Reminder'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </List>
+      </Box>
       
       {/* Settings Dialog */}
       <Dialog
         open={showSettingsDialog}
         onClose={() => setShowSettingsDialog(false)}
-        maxWidth="md"
+        maxWidth="sm"
         fullWidth
         PaperProps={{
           sx: {
-            backgroundColor: 'rgba(15, 15, 20, 0.95)',
+            backgroundColor: 'rgba(10, 10, 15, 0.95)',
             backdropFilter: 'blur(20px)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 'var(--radius-lg)',
           }
         }}
       >
-        <DialogTitle sx={{ color: 'white', display: 'flex', alignItems: 'center', gap: 1 }}>
-          <SettingsIcon />
-          Settings & Integrations
+        <DialogTitle sx={{ color: 'white', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SettingsIcon />
+            Settings
+          </Box>
         </DialogTitle>
-        <DialogContent sx={{ "& ul": { pl: 2 } }}>
-          <Tabs
-            value={settingsActiveTab}
-            onChange={(_, newValue) => setSettingsActiveTab(newValue)}
-            sx={{
-              mb: 3,
-              '& .MuiTab-root': { 
-                color: 'rgba(255, 255, 255, 0.7)',
-                '&.Mui-selected': {
-                  color: 'white',
-                }
-              },
-              '& .MuiTabs-indicator': { backgroundColor: 'var(--primary-color)' }
-            }}
-            aria-label="Settings Tabs"
-          >
-            <Tab label="Integrations" id="settings-tab-0" aria-controls="settings-tabpanel-0" />
-            <Tab label="Security" id="settings-tab-1" aria-controls="settings-tabpanel-1" />
-            <Tab label="Setup Guide" id="settings-tab-2" aria-controls="settings-tabpanel-2" />
-          </Tabs>
-          
-          {/* Integrations Tab Panel */}
-          <Box role="tabpanel" hidden={settingsActiveTab !== 0} id="settings-tabpanel-0" aria-labelledby="settings-tab-0">
-            {!GOOGLE_CLIENT_ID_IS_SET && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                Google Client ID is not configured. Please set VITE_GOOGLE_CLIENT_ID in your .env file to enable Google Calendar integration.
-              </Alert>
-            )}
-            <Card sx={{ mb: 2, backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <GoogleIcon sx={{ color: '#4285f4' }} />
-                    <Typography variant="h6" sx={{ color: 'white' }}>
-                      Google Calendar
+        <DialogContent sx={{ pt: 3 }}>
+          {/* Google Calendar Integration */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" sx={{ color: 'white', mb: 2, fontWeight: 600 }}>
+              Google Calendar Integration
+            </Typography>
+            
+            {!GOOGLE_CLIENT_ID_IS_SET ? (
+              <Box>
+                <Alert severity="info" sx={{ mb: 2, backgroundColor: 'rgba(33, 150, 243, 0.1)' }}>
+                  Google Calendar integration requires setup
+                </Alert>
+                
+                {!showGoogleSetup ? (
+                  <Box>
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>
+                      Connect your Google Calendar to sync events as todos. This requires a Google API key.
                     </Typography>
-                    {authState.google.isAuthenticated && (
-                      <CheckCircleIcon sx={{ color: '#4caf50', fontSize: 20 }} />
-                    )}
+                    <Button
+                      variant="contained"
+                      onClick={() => setShowGoogleSetup(true)}
+                      startIcon={<SettingsIcon />}
+                      sx={{
+                        backgroundColor: 'var(--primary-color)',
+                        '&:hover': { backgroundColor: 'var(--primary-color)' }
+                      }}
+                    >
+                      Setup Google Calendar
+                    </Button>
                   </Box>
-                  <Button
-                    variant={authState.google.isAuthenticated ? 'outlined' : 'contained'}
-                    onClick={authState.google.isAuthenticated ? handleLogout : handleGoogleAuth}
-                    disabled={loading || !GOOGLE_CLIENT_ID_IS_SET}
-                    sx={{
-                      bgcolor: authState.google.isAuthenticated ? 'transparent' : (GOOGLE_CLIENT_ID_IS_SET ? 'var(--primary-color)' : 'grey.700'),
-                      borderColor: authState.google.isAuthenticated ? 'rgba(255, 255, 255, 0.3)' : (GOOGLE_CLIENT_ID_IS_SET ? 'var(--primary-color)' : 'grey.700'),
-                      color: 'white',
-                      '&:hover': {
-                        bgcolor: authState.google.isAuthenticated ? 'rgba(255,255,255,0.1)' : (GOOGLE_CLIENT_ID_IS_SET ? 'var(--primary-color-dark)' : 'grey.700'),
+                ) : (
+                  <Box>
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', mb: 2, fontWeight: 500 }}>
+                      Google Calendar Setup
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>
+                      First, get your Google API credentials, then paste your Client ID below:
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      onClick={() => window.open('https://console.cloud.google.com/apis/credentials', '_blank')}
+                      startIcon={<GoogleIcon />}
+                      sx={{
+                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                        color: 'white',
+                        mb: 2,
+                        '&:hover': { borderColor: 'rgba(255, 255, 255, 0.5)' }
+                      }}
+                    >
+                      Get API Key from Google
+                    </Button>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="123456789-abcdefghijklmnop.apps.googleusercontent.com"
+                      value={googleClientId}
+                      onChange={(e) => setGoogleClientId(e.target.value)}
+                      sx={{
+                        mb: 2,
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                          '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                          '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                          '&.Mui-focused fieldset': { borderColor: 'var(--primary-color)' },
+                        },
+                        '& .MuiInputBase-input': { 
+                          color: 'white',
+                          fontSize: '0.85rem'
+                        }
+                      }}
+                    />
+                    <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                      <Button
+                        variant="contained"
+                        onClick={() => {
+                          if (googleClientId.trim()) {
+                            showSnackbar('Google Client ID saved successfully!', 'success');
+                            setShowGoogleSetup(false);
+                          } else {
+                            showSnackbar('Please enter a valid Client ID', 'error');
+                          }
+                        }}
+                        disabled={!googleClientId.trim()}
+                        sx={{
+                          backgroundColor: 'var(--primary-color)',
+                          '&:hover': { backgroundColor: 'var(--primary-color)' }
+                        }}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        onClick={() => {
+                          setShowGoogleSetup(false);
+                          setGoogleClientId('');
+                        }}
+                        sx={{
+                          borderColor: 'rgba(255, 255, 255, 0.3)',
+                          color: 'white',
+                          '&:hover': { borderColor: 'rgba(255, 255, 255, 0.5)' }
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </Box>
+                    <Alert severity="warning" sx={{ backgroundColor: 'rgba(255, 152, 0, 0.1)' }}>
+                      <Typography variant="caption" sx={{ display: 'block', mb: 1 }}>
+                        <strong>Quick Setup Guide:</strong>
+                      </Typography>
+                      <Typography variant="caption" sx={{ display: 'block' }}>
+                        1. Go to Google Cloud Console → APIs & Services → Credentials<br/>
+                        2. Create OAuth 2.0 Client ID for "Web application"<br/>
+                        3. Add your domain to authorized origins<br/>
+                        4. Copy the Client ID and paste it above
+                      </Typography>
+                    </Alert>
+                  </Box>
+                )}
+              </Box>
+            ) : authState.google.isAuthenticated ? (
+              <Box>
+                <Alert severity="success" sx={{ mb: 2, backgroundColor: 'rgba(76, 175, 80, 0.1)' }}>
+                  Connected to Google Calendar
+                </Alert>
+                <Button
+                  variant="outlined"
+                  onClick={handleLogout}
+                  startIcon={<GoogleIcon />}
+                  sx={{
+                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                    color: 'white',
+                    '&:hover': { borderColor: 'rgba(255, 255, 255, 0.5)' }
+                  }}
+                >
+                  Disconnect
+                </Button>
+              </Box>
+            ) : (
+              <Box>
+                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>
+                  Connect your Google Calendar to sync events as todos
+                </Typography>
+                                  <Button
+                    variant="contained"
+                    onClick={async () => {
+                      setLoading(true);
+                      const result = await OAuth2Security.authenticateGoogle(googleClientId);
+                      if (result) {
+                        setAuthState(prev => ({
+                          ...prev,
+                          google: {
+                            isAuthenticated: true,
+                            accessToken: result.accessToken,
+                            refreshToken: result.refreshToken,
+                            expiresAt: result.expiresAt
+                          }
+                        }));
+                        showSnackbar('Connected to Google Calendar', 'success');
+                      } else {
+                        showSnackbar('Failed to connect to Google Calendar', 'error');
                       }
+                      setLoading(false);
+                    }}
+                    startIcon={<GoogleIcon />}
+                    disabled={loading}
+                    sx={{
+                      backgroundColor: 'var(--primary-color)',
+                      '&:hover': { backgroundColor: 'var(--primary-color)' }
                     }}
                   >
-                    {authState.google.isAuthenticated ? 'Disconnect' : 'Connect'}
+                    {loading ? <CircularProgress size={20} /> : 'Connect Google Calendar'}
                   </Button>
-                </Box>
-                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1 }}>
-                  Sync your calendar events as reminders. Uses secure OAuth 2.0 with PKCE.
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                  Ensure your Redirect URI (e.g., {OAuth2Security.REDIRECT_URI}) is authorized in Google Cloud Console. For web use without an extension, a callback handler at this URI is required.
-                </Typography>
-                {authState.google.error && (
-                  <Alert severity="error" sx={{ mt: 1 }}>
-                    {authState.google.error}
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
+              </Box>
+            )}
           </Box>
 
-          {/* Security Tab Panel */}
-          <Box role="tabpanel" hidden={settingsActiveTab !== 1} id="settings-tabpanel-1" aria-labelledby="settings-tab-1">
-            <Card sx={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <SecurityIcon sx={{ color: '#ff9800' }} />
-                  <Typography variant="h6" sx={{ color: 'white' }}>
-                    Security Settings
-                  </Typography>
-                </Box>
-                
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  The current data encryption uses a simple method for demonstration purposes. For production use, please implement a stronger encryption mechanism (e.g., Web Crypto API).
-                </Alert>
-
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={securityConfig.enableEncryption}
-                      onChange={(e) => setSecurityConfig(prev => ({ ...prev, enableEncryption: e.target.checked }))}
-                      sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--primary-color)' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: 'var(--primary-color)'} }}
-                    />
-                  }
-                  label="Enable local data encryption"
-                  sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 1, display: 'block' }}
-                />
-                
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={securityConfig.autoLogout}
-                      onChange={(e) => setSecurityConfig(prev => ({ ...prev, autoLogout: e.target.checked }))}
-                      sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--primary-color)' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: 'var(--primary-color)'} }}
-                    />
-                  }
-                  label="Auto logout after inactivity (experimental)"
-                  sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 1, display: 'block' }}
-                />
-                
-                {securityConfig.autoLogout && (
-                  <TextField
-                    label="Logout after (minutes)"
-                    type="number"
-                    size="small"
-                    value={securityConfig.logoutAfterMinutes}
-                    onChange={(e) => setSecurityConfig(prev => ({ ...prev, logoutAfterMinutes: parseInt(e.target.value) || 30 }))}
-                    sx={{
-                      ml: 4,
-                      mb: 2,
-                      width: 'calc(100% - 32px)',
-                      '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                      '& .MuiInputBase-input': { color: 'white' },
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.07)',
-                        '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                        '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.4)' },
-                      }
-                    }}
-                  />
-                )}
-                
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={securityConfig.requireReauth}
-                      onChange={(e) => setSecurityConfig(prev => ({ ...prev, requireReauth: e.target.checked }))}
-                      sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: 'var(--primary-color)' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: 'var(--primary-color)'} }}
-                    />
-                  }
-                  label="Require periodic re-authentication for integrations (experimental)"
-                  sx={{ color: 'rgba(255, 255, 255, 0.8)', display: 'block' }}
-                />
-                
-                {securityConfig.requireReauth && (
-                  <TextField
-                    label="Re-auth interval (hours)"
-                    type="number"
-                    size="small"
-                    value={securityConfig.reauthIntervalHours}
-                    onChange={(e) => setSecurityConfig(prev => ({ ...prev, reauthIntervalHours: parseInt(e.target.value) || 24 }))}
-                    sx={{
-                      ml: 4,
-                      mt: 1,
-                      width: 'calc(100% - 32px)',
-                      '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                      '& .MuiInputBase-input': { color: 'white' },
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.07)',
-                        '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                        '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.4)' },
-                      }
-                    }}
-                  />
-                )}
-              </CardContent>
-            </Card>
+          {/* Data Management */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" sx={{ color: 'white', mb: 2, fontWeight: 600 }}>
+              Data Management
+            </Typography>
+            
+            <Button
+              variant="outlined"
+              onClick={() => {
+                const dataStr = JSON.stringify(items, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `notes-todos-backup-${format(new Date(), 'yyyy-MM-dd')}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+                showSnackbar('Data exported successfully', 'success');
+              }}
+              sx={{
+                borderColor: 'rgba(255, 255, 255, 0.3)',
+                color: 'white',
+                mr: 1,
+                mb: 1,
+                '&:hover': { borderColor: 'rgba(255, 255, 255, 0.5)' }
+              }}
+            >
+              Export Data
+            </Button>
+            
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={() => {
+                if (window.confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+                  setItems([]);
+                  showSnackbar('All data cleared', 'success');
+                  setShowSettingsDialog(false);
+                }
+              }}
+              sx={{ mb: 1 }}
+            >
+              Clear All Data
+            </Button>
           </Box>
-
-          {/* Setup Guide Tab Panel */}
-          <Box role="tabpanel" hidden={settingsActiveTab !== 2} id="settings-tabpanel-2" aria-labelledby="settings-tab-2">
-            <Typography variant="h6" sx={{ color: 'white', mb: 2 }}>Google Calendar Setup Guide</Typography>
-            <Paper sx={{ p: 2, mb: 3, backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <List dense>
-                <ListItem><ListItemText primary="1. Go to Google Cloud Console (console.cloud.google.com)." /></ListItem>
-                <ListItem><ListItemText primary="2. Create a new project or select an existing one." /></ListItem>
-                <ListItem><ListItemText primary="3. In the navigation menu, go to 'APIs & Services' > 'Library'." /></ListItem>
-                <ListItem><ListItemText primary="4. Search for 'Google Calendar API' and enable it." /></ListItem>
-                <ListItem><ListItemText primary="5. Go to 'APIs & Services' > 'Credentials'." /></ListItem>
-                <ListItem><ListItemText primary="6. Click '+ CREATE CREDENTIALS' and select 'OAuth client ID'." /></ListItem>
-                <ListItem><ListItemText primary="7. If prompted, configure the 'OAuth consent screen':" secondaryTypographyProps={{ component: 'div' }} secondary={<List dense disablePadding sx={{pl:2}}>
-                  <ListItem sx={{py:0.2}}><ListItemText primary="• User Type: External (or Internal if applicable)." /></ListItem>
-                  <ListItem sx={{py:0.2}}><ListItemText primary="• Fill in App name, User support email, and Developer contact information." /></ListItem>
-                  <ListItem sx={{py:0.2}}><ListItemText primary="• Scopes: Add '.../auth/calendar.readonly'." /></ListItem>
-                  <ListItem sx={{py:0.2}}><ListItemText primary="• Add test users if your app is in testing phase." /></ListItem>
-                </List>} /></ListItem>
-                <ListItem><ListItemText primary="8. Choose 'Web application' as the Application type." /></ListItem>
-                <ListItem><ListItemText primary="9. Under 'Authorized JavaScript origins', add your app's URLs (e.g., http://localhost:3000, http://localhost:5173, your production URL)." /></ListItem>
-                <ListItem><ListItemText primaryTypographyProps={{component: 'div'}} primary="10. Under 'Authorized redirect URIs', add:" secondaryTypographyProps={{ component: 'div' }} secondary={
-                  <List dense disablePadding sx={{pl:2}}>
-                    <ListItem sx={{py:0.2}}><ListItemText primary={`• For Chrome Extension: ${chrome.identity && chrome.identity.getRedirectURL ? chrome.identity.getRedirectURL() : '(Displayed in Integrations tab when run as extension)'}`} /></ListItem>
-                    <ListItem sx={{py:0.2}}><ListItemText primary={`• For Web App: ${OAuth2Security.REDIRECT_URI} (or your custom callback path). Ensure your app handles this path.`} /></ListItem>
-                  </List>
-                } /></ListItem>
-                <ListItem><ListItemText primary="11. Click 'Create'. Copy the 'Client ID'." /></ListItem>
-                <ListItem><ListItemText primary="12. Create a .env file in your project's root directory if it doesn't exist." /></ListItem>
-                <ListItem><ListItemText primary={<span>13. Add the line <code>VITE_GOOGLE_CLIENT_ID=YOUR_COPIED_CLIENT_ID</code> to .env.</span>} /></ListItem>
-                <ListItem><ListItemText primary="14. Restart your development server (e.g., npm run dev)." /></ListItem>
-                <ListItem><ListItemText primary="15. Now you can use the 'Connect' button in the 'Integrations' tab." /></ListItem>
-              </List>
-            </Paper>
-          </Box>
-
         </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => {
-              setShowSettingsDialog(false);
-            }} 
-            sx={{ color: 'rgba(255, 255, 255, 0.7)', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)'} }}
+        <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', p: 2 }}>
+          <Button
+            onClick={() => setShowSettingsDialog(false)}
+            sx={{ color: 'white' }}
           >
             Close
           </Button>
         </DialogActions>
       </Dialog>
-      
+
       {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={6000}
+        autoHideDuration={3000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
           {snackbar.message}

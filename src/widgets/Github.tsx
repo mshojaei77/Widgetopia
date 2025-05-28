@@ -39,6 +39,29 @@ interface ContributionData {
   username: string;
 }
 
+// --- Mock Data for Development ---
+const mockContributionData: ContributionData = {
+  username: 'dev-user',
+  weeks: Array.from({ length: 52 }, (_, weekIndex) => ({
+    days: Array.from({ length: 7 }, (_, dayIndex) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (51 - weekIndex) * 7 - (6 - dayIndex));
+      const count = Math.random() > 0.3 ? Math.floor(Math.random() * 15) : 0;
+      let level = 0;
+      if (count > 0) level = 1;
+      if (count > 5) level = 2;
+      if (count > 10) level = 3;
+      if (count > 15) level = 4; // Should be rare with Math.random() * 15
+      return {
+        date: date.toISOString().split('T')[0],
+        count,
+        level,
+      };
+    }),
+  })),
+};
+// --- End Mock Data ---
+
 const Github: React.FC = () => {
   const theme = useTheme();
   const [username, setUsername] = useState<string>(() => {
@@ -56,15 +79,41 @@ const Github: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (username && token) {
-      fetchContributions(username, token);
-      localStorage.setItem('githubUsername', username);
-      localStorage.setItem('githubToken', token);
+    if (import.meta.env.DEV) {
+      setLoading(true);
+      setError(null);
+      setTimeout(() => {
+        setContributionData(mockContributionData);
+        setLoading(false);
+      }, 1000); // Simulate loading
+    } else {
+      if (username && token) {
+        fetchContributions(username, token);
+        localStorage.setItem('githubUsername', username);
+        localStorage.setItem('githubToken', token);
+      } else {
+        // Clear data if no credentials in production, to show connect prompt
+        setContributionData(null);
+      }
     }
   }, [username, token]);
 
   const fetchContributions = async (user: string, userToken: string) => {
-    if (!user || !userToken) return;
+    if (import.meta.env.DEV) {
+      setLoading(true);
+      setError(null);
+      setTimeout(() => {
+        setContributionData(mockContributionData);
+        setLoading(false);
+      }, 500); // Simulate loading for refresh
+      return;
+    }
+
+    if (!user || !userToken) {
+      setError("Username and token are required to fetch contributions.");
+      setContributionData(null);
+      return;
+    }
     
     setLoading(true);
     setError(null);
@@ -75,6 +124,7 @@ const Github: React.FC = () => {
       setContributionData(data);
     } catch (err) {
       console.error('Failed to fetch contribution data:', err);
+      setContributionData(null); // Clear data on error
       
       // Provide more detailed error information
       let errorMessage = 'Failed to fetch GitHub contribution data.';
@@ -98,12 +148,25 @@ const Github: React.FC = () => {
     if (inputUsername.trim() !== username || inputToken !== token) {
       setUsername(inputUsername.trim());
       setToken(inputToken);
+    } else if (import.meta.env.DEV && (!username || !token)) {
+      // If in dev mode and submitting for the first time (no stored username/token)
+      // trigger mock data loading if it wasn't already loaded by initial useEffect
+      // This handles the case where the user opens the dialog and saves without changing
+      // inputUsername/inputToken from potentially empty initial state.
+      setLoading(true);
+      setError(null);
+      setTimeout(() => {
+        setContributionData(mockContributionData);
+        setLoading(false);
+      }, 500);
     }
     setDialogOpen(false);
   };
 
   const handleRefresh = () => {
-    if (username && token) {
+    if (import.meta.env.DEV) {
+      fetchContributions('dev-user', 'dev-token'); // Args don't matter for dev
+    } else if (username && token) {
       fetchContributions(username, token);
     } else {
       setDialogOpen(true);
@@ -199,17 +262,17 @@ const Github: React.FC = () => {
             textShadow: '0 1px 3px rgba(0,0,0,0.2)',
             color: 'var(--text-color)'
           }}>
-            GitHub Contributions
+            GitHub Contributions {import.meta.env.DEV && "(Dev Mode)"}
           </Typography>
         </Box>
         
         <Box>
-          {username && (
+          { (contributionData?.username || username) && (
             <Tooltip title="View on GitHub">
               <IconButton 
                 size="small" 
                 component={Link}
-                href={`https://github.com/${username}`}
+                href={`https://github.com/${contributionData?.username || username}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 sx={{ 
@@ -246,7 +309,7 @@ const Github: React.FC = () => {
           <Tooltip title="Refresh">
             <IconButton 
               onClick={handleRefresh} 
-              disabled={loading || !username}
+              disabled={loading || (!username && !import.meta.env.DEV)}
               size="small" 
               sx={{ 
                 ml: 1, 
@@ -387,7 +450,7 @@ const Github: React.FC = () => {
           {/* GitHub username link */}
           <Box sx={{ mt: 2, textAlign: 'center' }}>
             <Link 
-              href={`https://github.com/${username}`}
+              href={`https://github.com/${contributionData?.username || username}`}
               target="_blank"
               rel="noopener noreferrer"
               sx={{ 
@@ -405,7 +468,7 @@ const Github: React.FC = () => {
               }}
             >
               <GitHub sx={{ fontSize: 14, mr: 0.5 }} />
-              {username}
+              {contributionData?.username || username}
             </Link>
           </Box>
         </Box>
@@ -481,6 +544,7 @@ const Github: React.FC = () => {
               variant="outlined"
               value={inputUsername}
               onChange={(e) => setInputUsername(e.target.value)}
+              disabled={process.env.NODE_ENV === 'development'} // Disable in dev mode as it's not used
               sx={{
                 mb: 3,
                 '& .MuiOutlinedInput-root': {
@@ -546,6 +610,7 @@ const Github: React.FC = () => {
                   },
                   color: 'var(--text-color)'
                 }}
+                disabled={process.env.NODE_ENV === 'development'} // Disable in dev mode
               />
               <FormHelperText sx={{ color: 'rgba(255, 255, 255, 0.6)', mt: 1 }}>
                 <Link 
@@ -573,7 +638,7 @@ const Github: React.FC = () => {
             <Button 
               type="submit" 
               variant="contained" 
-              disabled={!inputUsername.trim() || !inputToken}
+              disabled={(!inputUsername.trim() || !inputToken) && !import.meta.env.DEV}
               sx={{ 
                 backgroundColor: 'rgba(35, 134, 54, 0.8)', 
                 '&:hover': { backgroundColor: 'rgba(46, 160, 67, 0.9)' },

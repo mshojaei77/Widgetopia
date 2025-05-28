@@ -35,6 +35,20 @@ const WidgetGrid: React.FC<WidgetGridProps> = ({
     return acc;
   }, {} as { [key: string]: WidgetLayout[] });
 
+  // Calculate the minimum required height for the grid
+  const calculateGridHeight = () => {
+    if (!layouts.lg || layouts.lg.length === 0) return 'auto';
+    
+    const maxY = Math.max(...layouts.lg.map(item => item.y + item.h));
+    const rowHeight = 20; // Match the rowHeight prop
+    const margin = 6; // Match the margin prop
+    const containerPadding = 8; // Match the containerPadding prop
+    
+    // Calculate total height: (rows * rowHeight) + (rows * margin) + padding
+    const totalHeight = (maxY * rowHeight) + ((maxY - 1) * margin) + (containerPadding * 2);
+    return `${totalHeight}px`;
+  };
+
   // Prevent dragging from interactive elements within widgets
   const onDragStart = (
       layout: Layout[],
@@ -67,9 +81,9 @@ const WidgetGrid: React.FC<WidgetGridProps> = ({
       layouts={layouts}
       breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
       cols={columnCount}
-      rowHeight={30} // Exact row height from screenshot
-      containerPadding={[5, 5]} // Padding around the grid matching screenshot
-      margin={[8, 8]} // Margin between items matching screenshot
+      rowHeight={20} // Reduced row height to minimize empty space
+      containerPadding={[8, 8]} // Slightly increased padding for better spacing
+      margin={[6, 6]} // Reduced margin between items to save space
       isDraggable={isDraggable}
       isResizable={isResizable}
       // Configure resize handles - enable all corners and edges for better UX
@@ -84,6 +98,14 @@ const WidgetGrid: React.FC<WidgetGridProps> = ({
       useCSSTransforms={true}
       // Ensure proper compaction
       compactType="vertical"
+      // Auto-size the container to content
+      autoSize={true}
+      // Prevent vertical scrolling by limiting height
+      style={{ 
+        height: calculateGridHeight(), // Use calculated height
+        minHeight: 'auto',
+        maxHeight: calculateGridHeight() // Ensure container fits content exactly
+      }}
       onLayoutChange={(layout, allLayouts) => {
         if (onLayoutChange) {
           // Only save the layout for the current breakpoint (e.g., 'lg')
@@ -103,7 +125,7 @@ const WidgetGrid: React.FC<WidgetGridProps> = ({
           key={item.id} 
           sx={{ 
             height: '100%', 
-            overflow: 'hidden',
+            overflow: 'auto', // Allow scrolling within widgets if needed
             position: 'relative',
             // Ensure the resize handles are visible and properly styled
             '& .react-resizable-handle': {

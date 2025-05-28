@@ -297,13 +297,6 @@ const BrowserHistory: React.FC = () => {
         </Alert>
       )}
 
-      {/* Development environment notice */}
-      {(process.env.NODE_ENV === 'development' || window.location.protocol === 'http:') && !error && (
-        <Alert severity="info" sx={{ mb: 1.5, fontSize: '0.8rem' }}>
-          Development Mode: Showing mock data. Install as Chrome extension to see real browser history.
-        </Alert>
-      )}
-
       <Divider sx={{ mb: 1.5, bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
 
       {/* Content */}
