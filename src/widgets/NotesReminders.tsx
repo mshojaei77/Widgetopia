@@ -454,13 +454,14 @@ const NotesReminders: React.FC = () => {
     severity: 'info'
   });
   
-  // Form state for add dialog
+  // Form state for add/edit dialog
   const [newItemTitle, setNewItemTitle] = useState('');
   const [newItemContent, setNewItemContent] = useState('');
   const [newItemDueDate, setNewItemDueDate] = useState('');
   const [newItemPriority, setNewItemPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [newItemCategory, setNewItemCategory] = useState<'personal' | 'work' | 'shopping' | 'health' | 'other'>('personal');
   const [newItemTags, setNewItemTags] = useState<string[]>([]);
+  const [newItemType, setNewItemType] = useState<'note' | 'todo'>('todo');
   
   // Google Client ID state for user configuration
   const [googleClientId, setGoogleClientId] = useState<string>('');
@@ -487,6 +488,11 @@ const NotesReminders: React.FC = () => {
   useEffect(() => {
     saveData();
   }, [items, authState, securityConfig]);
+
+  // Update security timers when config changes
+  useEffect(() => {
+    setupSecurityTimers();
+  }, [securityConfig]);
   
   const loadData = async () => {
     try {
@@ -706,6 +712,160 @@ const NotesReminders: React.FC = () => {
   const handleDeleteItem = (id: string) => {
     setItems(prev => prev.filter(item => item.id !== id));
     showSnackbar('Deleted', 'success');
+  };
+
+  const handleEditItem = (item: UnifiedItem) => {
+    setEditingItem(item);
+    setNewItemTitle(item.title);
+    setNewItemContent(item.content || '');
+    setNewItemDueDate(item.type === 'todo' && (item as Todo).dueDate ? format((item as Todo).dueDate!, 'yyyy-MM-dd') : '');
+    setNewItemPriority(item.priority);
+    setNewItemCategory(item.category);
+    setNewItemTags(item.type === 'note' ? (item as Note).tags : []);
+    setNewItemType(item.type);
+    setShowAddDialog(true);
+  };
+
+  const resetForm = () => {
+    setNewItemTitle('');
+    setNewItemContent('');
+    setNewItemDueDate('');
+    setNewItemPriority('medium');
+    setNewItemCategory('personal');
+    setNewItemTags([]);
+    setNewItemType('todo');
+    setEditingItem(null);
+  };
+
+  const handleSaveItem = () => {
+    if (!newItemTitle.trim()) return;
+
+    const now = new Date();
+    
+    if (editingItem) {
+      // Update existing item
+      setItems(prev => prev.map(item => {
+        if (item.id === editingItem.id) {
+          const baseUpdate = {
+            ...item,
+            title: newItemTitle,
+            content: newItemContent || undefined,
+            priority: newItemPriority,
+            category: newItemCategory,
+            updatedAt: now,
+          };
+
+          if (newItemType === 'note') {
+            return {
+              ...baseUpdate,
+              type: 'note' as const,
+              tags: newItemTags,
+            } as Note;
+          } else {
+            return {
+              ...baseUpdate,
+              type: 'todo' as const,
+              dueDate: newItemDueDate ? new Date(newItemDueDate) : undefined,
+              completed: 'completed' in item ? item.completed : false,
+            } as Todo;
+          }
+        }
+        return item;
+      }));
+      showSnackbar('Updated successfully', 'success');
+    } else {
+      // Create new item
+      let newItem: UnifiedItem;
+      
+      if (newItemType === 'note') {
+        newItem = {
+          id: `note-${Date.now()}`,
+          type: 'note',
+          title: newItemTitle,
+          content: newItemContent || undefined,
+          tags: newItemTags,
+          createdAt: now,
+          updatedAt: now,
+          priority: newItemPriority,
+          category: newItemCategory,
+        } as Note;
+      } else {
+        newItem = {
+          id: `todo-${Date.now()}`,
+          type: 'todo',
+          title: newItemTitle,
+          content: newItemContent || undefined,
+          dueDate: newItemDueDate ? new Date(newItemDueDate) : undefined,
+          completed: false,
+          createdAt: now,
+          updatedAt: now,
+          priority: newItemPriority,
+          category: newItemCategory,
+        } as Todo;
+      }
+      
+      setItems(prev => [newItem, ...prev]);
+      showSnackbar('Added successfully', 'success');
+    }
+
+    setShowAddDialog(false);
+    resetForm();
+  };
+
+  const syncGoogleCalendar = async () => {
+    if (!authState.google.isAuthenticated || !authState.google.accessToken) {
+      showSnackbar('Please connect to Google Calendar first', 'error');
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const events = await GoogleCalendarAPI.getEvents(authState.google.accessToken, 20);
+      
+      // Convert events to todos, avoiding duplicates
+      const existingExternalIds = new Set(
+        items
+          .filter(item => item.type === 'todo' && (item as Todo).source === 'google')
+          .map(item => (item as Todo).externalId)
+      );
+
+      const newTodos: Todo[] = events
+        .filter(event => !existingExternalIds.has(event.id))
+        .map(event => {
+          const startDate = event.start.dateTime 
+            ? parseISO(event.start.dateTime)
+            : event.start.date 
+            ? parseISO(event.start.date)
+            : new Date();
+
+          return {
+            id: `google-${event.id}-${Date.now()}`,
+            type: 'todo',
+            title: event.summary || 'Untitled Event',
+            content: event.description,
+            dueDate: startDate,
+            completed: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            priority: 'medium',
+            category: 'work',
+            source: 'google',
+            externalId: event.id,
+          } as Todo;
+        });
+
+      if (newTodos.length > 0) {
+        setItems(prev => [...newTodos, ...prev]);
+        showSnackbar(`Synced ${newTodos.length} events from Google Calendar`, 'success');
+      } else {
+        showSnackbar('No new events to sync', 'info');
+      }
+    } catch (error) {
+      console.error('Calendar sync failed:', error);
+      showSnackbar('Failed to sync calendar events', 'error');
+    } finally {
+      setSyncing(false);
+    }
   };
   
   const getPriorityColor = (priority: 'low' | 'medium' | 'high') => {
@@ -993,18 +1153,53 @@ const NotesReminders: React.FC = () => {
                           {getTypeIcon(item.type)}
                         </Box>
                         
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontWeight: 500,
-                            color: 'white',
-                            textDecoration: 'completed' in item && item.completed ? 'line-through' : 'none',
-                            flexGrow: 1,
-                            fontSize: '0.85rem'
-                          }}
-                        >
-                          {item.title}
-                        </Typography>
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 500,
+                              color: 'white',
+                              textDecoration: 'completed' in item && item.completed ? 'line-through' : 'none',
+                              fontSize: '0.85rem',
+                              mb: item.content || (item.type === 'note' && (item as Note).tags.length > 0) ? 0.5 : 0
+                            }}
+                          >
+                            {item.title}
+                          </Typography>
+                          
+                          {item.content && (
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: 'rgba(255, 255, 255, 0.6)',
+                                fontSize: '0.75rem',
+                                display: 'block',
+                                mb: 0.5
+                              }}
+                            >
+                              {item.content.length > 60 ? `${item.content.substring(0, 60)}...` : item.content}
+                            </Typography>
+                          )}
+                          
+                          {item.type === 'note' && (item as Note).tags.length > 0 && (
+                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                              {(item as Note).tags.map((tag, index) => (
+                                <Chip
+                                  key={index}
+                                  label={tag}
+                                  size="small"
+                                  sx={{
+                                    height: 16,
+                                    fontSize: '0.65rem',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                    color: 'rgba(255, 255, 255, 0.8)',
+                                    '& .MuiChip-label': { px: 0.5 }
+                                  }}
+                                />
+                              ))}
+                            </Box>
+                          )}
+                        </Box>
                       </Box>
                       
                       <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
@@ -1031,11 +1226,23 @@ const NotesReminders: React.FC = () => {
                         
                         <IconButton
                           size="small"
+                          onClick={() => handleEditItem(item)}
+                          sx={{ 
+                            color: 'rgba(255, 255, 255, 0.5)',
+                            p: 0.25,
+                            '&:hover': { color: 'rgba(255, 255, 255, 0.8)' }
+                          }}
+                        >
+                          <EditIcon sx={{ fontSize: 14 }} />
+                        </IconButton>
+                        
+                        <IconButton
+                          size="small"
                           onClick={() => handleDeleteItem(item.id)}
                           sx={{ 
                             color: 'rgba(255, 255, 255, 0.5)',
                             p: 0.25,
-                            ml: 0.5
+                            '&:hover': { color: '#f44336' }
                           }}
                         >
                           <DeleteIcon sx={{ fontSize: 14 }} />
@@ -1058,11 +1265,39 @@ const NotesReminders: React.FC = () => {
           )}
         </List>
       </Box>
-      
-      {/* Settings Dialog */}
+
+      {/* Floating Action Button */}
+      <Fab
+        size="small"
+        onClick={() => {
+          resetForm();
+          setShowAddDialog(true);
+        }}
+        sx={{
+          position: 'absolute',
+          bottom: 16,
+          right: 16,
+          backgroundColor: 'var(--primary-color)',
+          color: 'white',
+          width: 40,
+          height: 40,
+          '&:hover': {
+            backgroundColor: 'var(--primary-color)',
+            transform: 'scale(1.1)',
+          },
+          transition: 'transform 0.2s ease-in-out',
+        }}
+      >
+        <AddIcon sx={{ fontSize: 20 }} />
+      </Fab>
+
+      {/* Add/Edit Dialog */}
       <Dialog
-        open={showSettingsDialog}
-        onClose={() => setShowSettingsDialog(false)}
+        open={showAddDialog}
+        onClose={() => {
+          setShowAddDialog(false);
+          resetForm();
+        }}
         maxWidth="sm"
         fullWidth
         PaperProps={{
@@ -1076,120 +1311,409 @@ const NotesReminders: React.FC = () => {
       >
         <DialogTitle sx={{ color: 'white', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <SettingsIcon />
-            Settings
+            {getTypeIcon(newItemType)}
+            {editingItem ? 'Edit' : 'Add'} {newItemType === 'note' ? 'Note' : 'Todo'}
           </Box>
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
-          {/* Google Calendar Integration */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle2" sx={{ color: 'white', mb: 2, fontWeight: 600 }}>
-              Google Calendar Integration
+          {/* Type Toggle */}
+          <Box sx={{ display: 'flex', gap: 0.5, mb: 2 }}>
+            <Button
+              variant={newItemType === 'note' ? 'contained' : 'outlined'}
+              size="small"
+              onClick={() => setNewItemType('note')}
+              startIcon={<NoteIcon sx={{ fontSize: 14 }} />}
+              sx={{
+                backgroundColor: newItemType === 'note' ? 'var(--primary-color)' : 'transparent',
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: newItemType === 'note' ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.1)',
+                }
+              }}
+            >
+              Note
+            </Button>
+            <Button
+              variant={newItemType === 'todo' ? 'contained' : 'outlined'}
+              size="small"
+              onClick={() => setNewItemType('todo')}
+              startIcon={<TodoIcon sx={{ fontSize: 14 }} />}
+              sx={{
+                backgroundColor: newItemType === 'todo' ? 'var(--primary-color)' : 'transparent',
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: newItemType === 'todo' ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.1)',
+                }
+              }}
+            >
+              Todo
+            </Button>
+          </Box>
+
+          {/* Title */}
+          <TextField
+            fullWidth
+            label="Title"
+            value={newItemTitle}
+            onChange={(e) => setNewItemTitle(e.target.value)}
+            sx={{
+              mb: 2,
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                '&.Mui-focused fieldset': { borderColor: 'var(--primary-color)' },
+              },
+              '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
+              '& .MuiInputBase-input': { color: 'white' }
+            }}
+          />
+
+          {/* Content */}
+          <TextField
+            fullWidth
+            label={newItemType === 'note' ? 'Content' : 'Description (optional)'}
+            multiline
+            rows={3}
+            value={newItemContent}
+            onChange={(e) => setNewItemContent(e.target.value)}
+            sx={{
+              mb: 2,
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                '&.Mui-focused fieldset': { borderColor: 'var(--primary-color)' },
+              },
+              '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
+              '& .MuiInputBase-input': { color: 'white' }
+            }}
+          />
+
+          {/* Due Date (for todos only) */}
+          {newItemType === 'todo' && (
+            <TextField
+              fullWidth
+              label="Due Date"
+              type="date"
+              value={newItemDueDate}
+              onChange={(e) => setNewItemDueDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                  '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                  '&.Mui-focused fieldset': { borderColor: 'var(--primary-color)' },
+                },
+                '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
+                '& .MuiInputBase-input': { color: 'white' }
+              }}
+            />
+          )}
+
+          {/* Tags (for notes only) */}
+          {newItemType === 'note' && (
+            <TextField
+              fullWidth
+              label="Tags (comma separated)"
+              value={newItemTags.join(', ')}
+              onChange={(e) => setNewItemTags(e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag))}
+              sx={{
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                  '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                  '&.Mui-focused fieldset': { borderColor: 'var(--primary-color)' },
+                },
+                '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
+                '& .MuiInputBase-input': { color: 'white' }
+              }}
+            />
+          )}
+
+          {/* Priority and Category */}
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Priority</InputLabel>
+              <Select
+                value={newItemPriority}
+                onChange={(e) => setNewItemPriority(e.target.value as 'low' | 'medium' | 'high')}
+                sx={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  color: 'white',
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary-color)' },
+                }}
+              >
+                <MenuItem value="low">Low</MenuItem>
+                <MenuItem value="medium">Medium</MenuItem>
+                <MenuItem value="high">High</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Category</InputLabel>
+              <Select
+                value={newItemCategory}
+                onChange={(e) => setNewItemCategory(e.target.value as 'personal' | 'work' | 'shopping' | 'health' | 'other')}
+                sx={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  color: 'white',
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--primary-color)' },
+                }}
+              >
+                <MenuItem value="personal">Personal</MenuItem>
+                <MenuItem value="work">Work</MenuItem>
+                <MenuItem value="shopping">Shopping</MenuItem>
+                <MenuItem value="health">Health</MenuItem>
+                <MenuItem value="other">Other</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', p: 2 }}>
+          <Button
+            onClick={() => {
+              setShowAddDialog(false);
+              resetForm();
+            }}
+            sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveItem}
+            variant="contained"
+            disabled={!newItemTitle.trim()}
+            sx={{
+              backgroundColor: 'var(--primary-color)',
+              '&:hover': { backgroundColor: 'var(--primary-color)' }
+            }}
+          >
+            {editingItem ? 'Update' : 'Add'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Settings Dialog */}
+      <Dialog
+        open={showSettingsDialog}
+        onClose={() => setShowSettingsDialog(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            backgroundColor: 'rgba(10, 10, 15, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 'var(--radius-lg)',
+            maxHeight: '80vh',
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: 'white', 
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          pb: 2,
+          pt: 3
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <SettingsIcon sx={{ fontSize: 24 }} />
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>
+              Settings
             </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 4, pb: 3, px: 4 }}>
+          {/* Google Calendar Integration */}
+          <Box sx={{ mb: 4 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+              <GoogleIcon sx={{ fontSize: 20, color: 'var(--primary-color)' }} />
+              <Typography variant="h6" sx={{ color: 'white', fontWeight: 600 }}>
+                Google Calendar Integration
+              </Typography>
+            </Box>
             
             {!GOOGLE_CLIENT_ID_IS_SET ? (
-              <Box>
-                <Alert severity="info" sx={{ mb: 2, backgroundColor: 'rgba(33, 150, 243, 0.1)' }}>
-                  Google Calendar integration requires setup
+              <Box sx={{ pl: 1 }}>
+                <Alert 
+                  severity="info" 
+                  sx={{ 
+                    mb: 3, 
+                    backgroundColor: 'rgba(33, 150, 243, 0.15)',
+                    border: '1px solid rgba(33, 150, 243, 0.3)',
+                    borderRadius: 'var(--radius-md)',
+                    '& .MuiAlert-message': { fontSize: '0.9rem' }
+                  }}
+                >
+                  Google Calendar integration requires setup to sync events as todos
                 </Alert>
                 
                 {!showGoogleSetup ? (
                   <Box>
-                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>
-                      Connect your Google Calendar to sync events as todos. This requires a Google API key.
+                    <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 3, lineHeight: 1.6 }}>
+                      Connect your Google Calendar to automatically sync upcoming events as todos in your workspace.
                     </Typography>
                     <Button
                       variant="contained"
                       onClick={() => setShowGoogleSetup(true)}
                       startIcon={<SettingsIcon />}
+                      size="large"
                       sx={{
                         backgroundColor: 'var(--primary-color)',
-                        '&:hover': { backgroundColor: 'var(--primary-color)' }
+                        '&:hover': { backgroundColor: 'var(--primary-color)' },
+                        px: 3,
+                        py: 1.5,
+                        borderRadius: 'var(--radius-md)',
+                        textTransform: 'none',
+                        fontSize: '1rem',
+                        fontWeight: 500
                       }}
                     >
                       Setup Google Calendar
                     </Button>
                   </Box>
                 ) : (
-                  <Box>
-                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', mb: 2, fontWeight: 500 }}>
+                  <Box sx={{ pl: 1 }}>
+                    <Typography variant="h6" sx={{ color: 'white', mb: 2, fontWeight: 600 }}>
                       Google Calendar Setup
                     </Typography>
-                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>
-                      First, get your Google API credentials, then paste your Client ID below:
+                    <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 3, lineHeight: 1.6 }}>
+                      To enable Google Calendar integration, you'll need to get your API credentials from Google Cloud Console.
                     </Typography>
-                    <Button
-                      variant="outlined"
-                      onClick={() => window.open('https://console.cloud.google.com/apis/credentials', '_blank')}
-                      startIcon={<GoogleIcon />}
-                      sx={{
-                        borderColor: 'rgba(255, 255, 255, 0.3)',
-                        color: 'white',
-                        mb: 2,
-                        '&:hover': { borderColor: 'rgba(255, 255, 255, 0.5)' }
-                      }}
-                    >
-                      Get API Key from Google
-                    </Button>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      placeholder="123456789-abcdefghijklmnop.apps.googleusercontent.com"
-                      value={googleClientId}
-                      onChange={(e) => setGoogleClientId(e.target.value)}
-                      sx={{
-                        mb: 2,
-                        '& .MuiOutlinedInput-root': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                          '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                          '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
-                          '&.Mui-focused fieldset': { borderColor: 'var(--primary-color)' },
-                        },
-                        '& .MuiInputBase-input': { 
-                          color: 'white',
-                          fontSize: '0.85rem'
-                        }
-                      }}
-                    />
-                    <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                      <Button
-                        variant="contained"
-                        onClick={() => {
-                          if (googleClientId.trim()) {
-                            showSnackbar('Google Client ID saved successfully!', 'success');
-                            setShowGoogleSetup(false);
-                          } else {
-                            showSnackbar('Please enter a valid Client ID', 'error');
-                          }
-                        }}
-                        disabled={!googleClientId.trim()}
-                        sx={{
-                          backgroundColor: 'var(--primary-color)',
-                          '&:hover': { backgroundColor: 'var(--primary-color)' }
-                        }}
-                      >
-                        Save
-                      </Button>
+                    
+                    <Box sx={{ 
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)', 
+                      p: 3, 
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      mb: 3
+                    }}>
+                      <Typography variant="subtitle2" sx={{ color: 'white', mb: 2, fontWeight: 600 }}>
+                        Step 1: Get your Google API credentials
+                      </Typography>
                       <Button
                         variant="outlined"
-                        onClick={() => {
-                          setShowGoogleSetup(false);
-                          setGoogleClientId('');
-                        }}
+                        onClick={() => window.open('https://console.cloud.google.com/apis/credentials', '_blank')}
+                        startIcon={<GoogleIcon />}
+                        size="large"
                         sx={{
                           borderColor: 'rgba(255, 255, 255, 0.3)',
                           color: 'white',
-                          '&:hover': { borderColor: 'rgba(255, 255, 255, 0.5)' }
+                          mb: 3,
+                          px: 3,
+                          py: 1.5,
+                          borderRadius: 'var(--radius-md)',
+                          textTransform: 'none',
+                          fontSize: '1rem',
+                          '&:hover': { 
+                            borderColor: 'rgba(255, 255, 255, 0.5)',
+                            backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                          }
                         }}
                       >
-                        Cancel
+                        Open Google Cloud Console
                       </Button>
-                    </Box>
-                    <Alert severity="warning" sx={{ backgroundColor: 'rgba(255, 152, 0, 0.1)' }}>
-                      <Typography variant="caption" sx={{ display: 'block', mb: 1 }}>
-                        <strong>Quick Setup Guide:</strong>
+                      
+                      <Typography variant="subtitle2" sx={{ color: 'white', mb: 2, fontWeight: 600 }}>
+                        Step 2: Enter your Client ID
                       </Typography>
-                      <Typography variant="caption" sx={{ display: 'block' }}>
+                      <TextField
+                        fullWidth
+                        placeholder="123456789-abcdefghijklmnop.apps.googleusercontent.com"
+                        value={googleClientId}
+                        onChange={(e) => setGoogleClientId(e.target.value)}
+                        sx={{
+                          mb: 3,
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                            borderRadius: 'var(--radius-md)',
+                            '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                            '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                            '&.Mui-focused fieldset': { borderColor: 'var(--primary-color)' },
+                            height: 48
+                          },
+                          '& .MuiInputBase-input': { 
+                            color: 'white',
+                            fontSize: '1rem',
+                            py: 1.5
+                          }
+                        }}
+                      />
+                      
+                      <Box sx={{ display: 'flex', gap: 2 }}>
+                        <Button
+                          variant="contained"
+                          onClick={() => {
+                            if (googleClientId.trim()) {
+                              showSnackbar('Google Client ID saved successfully!', 'success');
+                              setShowGoogleSetup(false);
+                            } else {
+                              showSnackbar('Please enter a valid Client ID', 'error');
+                            }
+                          }}
+                          disabled={!googleClientId.trim()}
+                          size="large"
+                          sx={{
+                            backgroundColor: 'var(--primary-color)',
+                            '&:hover': { backgroundColor: 'var(--primary-color)' },
+                            px: 3,
+                            py: 1.5,
+                            borderRadius: 'var(--radius-md)',
+                            textTransform: 'none',
+                            fontSize: '1rem',
+                            fontWeight: 500
+                          }}
+                        >
+                          Save Configuration
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          onClick={() => {
+                            setShowGoogleSetup(false);
+                            setGoogleClientId('');
+                          }}
+                          size="large"
+                          sx={{
+                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                            color: 'white',
+                            px: 3,
+                            py: 1.5,
+                            borderRadius: 'var(--radius-md)',
+                            textTransform: 'none',
+                            fontSize: '1rem',
+                            '&:hover': { 
+                              borderColor: 'rgba(255, 255, 255, 0.5)',
+                              backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                            }
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </Box>
+                    </Box>
+                    
+                    <Alert 
+                      severity="info" 
+                      sx={{ 
+                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                        border: '1px solid rgba(33, 150, 243, 0.3)',
+                        borderRadius: 'var(--radius-md)',
+                        '& .MuiAlert-message': { fontSize: '0.9rem' }
+                      }}
+                    >
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                        Quick Setup Guide:
+                      </Typography>
+                      <Typography variant="body2" sx={{ lineHeight: 1.5 }}>
                         1. Go to Google Cloud Console → APIs & Services → Credentials<br/>
                         2. Create OAuth 2.0 Client ID for "Web application"<br/>
                         3. Add your domain to authorized origins<br/>
@@ -1200,112 +1724,196 @@ const NotesReminders: React.FC = () => {
                 )}
               </Box>
             ) : authState.google.isAuthenticated ? (
-              <Box>
-                <Alert severity="success" sx={{ mb: 2, backgroundColor: 'rgba(76, 175, 80, 0.1)' }}>
-                  Connected to Google Calendar
-                </Alert>
-                <Button
-                  variant="outlined"
-                  onClick={handleLogout}
-                  startIcon={<GoogleIcon />}
-                  sx={{
-                    borderColor: 'rgba(255, 255, 255, 0.3)',
-                    color: 'white',
-                    '&:hover': { borderColor: 'rgba(255, 255, 255, 0.5)' }
+              <Box sx={{ pl: 1 }}>
+                <Alert 
+                  severity="success" 
+                  sx={{ 
+                    mb: 3, 
+                    backgroundColor: 'rgba(76, 175, 80, 0.15)',
+                    border: '1px solid rgba(76, 175, 80, 0.3)',
+                    borderRadius: 'var(--radius-md)',
+                    '& .MuiAlert-message': { fontSize: '0.9rem' }
                   }}
                 >
-                  Disconnect
-                </Button>
-              </Box>
-            ) : (
-              <Box>
-                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 2 }}>
-                  Connect your Google Calendar to sync events as todos
-                </Typography>
-                                  <Button
+                  Successfully connected to Google Calendar
+                </Alert>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Button
                     variant="contained"
-                    onClick={async () => {
-                      setLoading(true);
-                      const result = await OAuth2Security.authenticateGoogle(googleClientId);
-                      if (result) {
-                        setAuthState(prev => ({
-                          ...prev,
-                          google: {
-                            isAuthenticated: true,
-                            accessToken: result.accessToken,
-                            refreshToken: result.refreshToken,
-                            expiresAt: result.expiresAt
-                          }
-                        }));
-                        showSnackbar('Connected to Google Calendar', 'success');
-                      } else {
-                        showSnackbar('Failed to connect to Google Calendar', 'error');
-                      }
-                      setLoading(false);
-                    }}
-                    startIcon={<GoogleIcon />}
-                    disabled={loading}
+                    onClick={syncGoogleCalendar}
+                    startIcon={syncing ? <CircularProgress size={20} /> : <SyncIcon />}
+                    disabled={syncing}
+                    size="large"
                     sx={{
                       backgroundColor: 'var(--primary-color)',
-                      '&:hover': { backgroundColor: 'var(--primary-color)' }
+                      '&:hover': { backgroundColor: 'var(--primary-color)' },
+                      px: 3,
+                      py: 1.5,
+                      borderRadius: 'var(--radius-md)',
+                      textTransform: 'none',
+                      fontSize: '1rem',
+                      fontWeight: 500
                     }}
                   >
-                    {loading ? <CircularProgress size={20} /> : 'Connect Google Calendar'}
+                    {syncing ? 'Syncing Calendar...' : 'Sync Calendar Events'}
                   </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={handleLogout}
+                    startIcon={<GoogleIcon />}
+                    size="large"
+                    sx={{
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                      color: 'white',
+                      px: 3,
+                      py: 1.5,
+                      borderRadius: 'var(--radius-md)',
+                      textTransform: 'none',
+                      fontSize: '1rem',
+                      '&:hover': { 
+                        borderColor: 'rgba(255, 255, 255, 0.5)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                      }
+                    }}
+                  >
+                    Disconnect
+                  </Button>
+                </Box>
+              </Box>
+            ) : (
+              <Box sx={{ pl: 1 }}>
+                <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 3, lineHeight: 1.6 }}>
+                  Connect your Google Calendar to automatically sync upcoming events as todos in your workspace.
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={async () => {
+                    setLoading(true);
+                    const result = await OAuth2Security.authenticateGoogle(googleClientId);
+                    if (result) {
+                      setAuthState(prev => ({
+                        ...prev,
+                        google: {
+                          isAuthenticated: true,
+                          accessToken: result.accessToken,
+                          refreshToken: result.refreshToken,
+                          expiresAt: result.expiresAt
+                        }
+                      }));
+                      showSnackbar('Connected to Google Calendar', 'success');
+                    } else {
+                      showSnackbar('Failed to connect to Google Calendar', 'error');
+                    }
+                    setLoading(false);
+                  }}
+                  startIcon={loading ? <CircularProgress size={20} /> : <GoogleIcon />}
+                  disabled={loading}
+                  size="large"
+                  sx={{
+                    backgroundColor: 'var(--primary-color)',
+                    '&:hover': { backgroundColor: 'var(--primary-color)' },
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 'var(--radius-md)',
+                    textTransform: 'none',
+                    fontSize: '1rem',
+                    fontWeight: 500
+                  }}
+                >
+                  {loading ? 'Connecting...' : 'Connect Google Calendar'}
+                </Button>
               </Box>
             )}
           </Box>
 
           {/* Data Management */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle2" sx={{ color: 'white', mb: 2, fontWeight: 600 }}>
-              Data Management
-            </Typography>
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+              <SecurityIcon sx={{ fontSize: 20, color: 'var(--primary-color)' }} />
+              <Typography variant="h6" sx={{ color: 'white', fontWeight: 600 }}>
+                Data Management
+              </Typography>
+            </Box>
             
-            <Button
-              variant="outlined"
-              onClick={() => {
-                const dataStr = JSON.stringify(items, null, 2);
-                const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                const url = URL.createObjectURL(dataBlob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `notes-todos-backup-${format(new Date(), 'yyyy-MM-dd')}.json`;
-                link.click();
-                URL.revokeObjectURL(url);
-                showSnackbar('Data exported successfully', 'success');
-              }}
-              sx={{
-                borderColor: 'rgba(255, 255, 255, 0.3)',
-                color: 'white',
-                mr: 1,
-                mb: 1,
-                '&:hover': { borderColor: 'rgba(255, 255, 255, 0.5)' }
-              }}
-            >
-              Export Data
-            </Button>
-            
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={() => {
-                if (window.confirm('Are you sure you want to clear all data? This cannot be undone.')) {
-                  setItems([]);
-                  showSnackbar('All data cleared', 'success');
-                  setShowSettingsDialog(false);
-                }
-              }}
-              sx={{ mb: 1 }}
-            >
-              Clear All Data
-            </Button>
+            <Box sx={{ pl: 1 }}>
+              <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.8)', mb: 3, lineHeight: 1.6 }}>
+                Export your notes and todos as a backup file, or clear all data to start fresh.
+              </Typography>
+              
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    const dataStr = JSON.stringify(items, null, 2);
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `notes-todos-backup-${format(new Date(), 'yyyy-MM-dd')}.json`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                    showSnackbar('Data exported successfully', 'success');
+                  }}
+                  size="large"
+                  sx={{
+                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                    color: 'white',
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 'var(--radius-md)',
+                    textTransform: 'none',
+                    fontSize: '1rem',
+                    '&:hover': { 
+                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                    }
+                  }}
+                >
+                  Export Backup
+                </Button>
+                
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+                      setItems([]);
+                      showSnackbar('All data cleared', 'success');
+                      setShowSettingsDialog(false);
+                    }
+                  }}
+                  size="large"
+                  sx={{
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 'var(--radius-md)',
+                    textTransform: 'none',
+                    fontSize: '1rem'
+                  }}
+                >
+                  Clear All Data
+                </Button>
+              </Box>
+            </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', p: 2 }}>
+        <DialogActions sx={{ 
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)', 
+          p: 3,
+          justifyContent: 'flex-end'
+        }}>
           <Button
             onClick={() => setShowSettingsDialog(false)}
-            sx={{ color: 'white' }}
+            size="large"
+            sx={{ 
+              color: 'white',
+              px: 3,
+              py: 1.5,
+              borderRadius: 'var(--radius-md)',
+              textTransform: 'none',
+              fontSize: '1rem',
+              '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.05)' }
+            }}
           >
             Close
           </Button>

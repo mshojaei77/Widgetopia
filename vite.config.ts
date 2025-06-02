@@ -5,6 +5,7 @@ import { copyFileSync } from 'fs';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [
     react(),
     {
@@ -32,7 +33,16 @@ export default defineConfig({
       output: {
         entryFileNames: `assets/[name].js`,
         chunkFileNames: `assets/[name].js`,
-        assetFileNames: `assets/[name].[ext]`,
+        assetFileNames: (assetInfo) => {
+          // Keep favicon files in root and icons in icons folder
+          if (assetInfo.name === 'favicon.ico') {
+            return 'favicon.ico';
+          }
+          if (assetInfo.name && assetInfo.name.startsWith('icon')) {
+            return `icons/[name].[ext]`;
+          }
+          return `assets/[name].[ext]`;
+        },
         manualChunks: {
           vendor: ['react', 'react-dom'],
           mui: ['@mui/material', '@mui/icons-material'],

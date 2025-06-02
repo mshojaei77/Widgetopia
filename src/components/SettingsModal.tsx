@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import {
   Modal, Box, Paper, Typography, List, ListItem, ListItemText, Switch, IconButton, Divider,
-  Tab, Tabs, TextField, Button, Alert, Slider, FormControl, InputLabel, Select, MenuItem
+  Tab, Tabs, TextField, Button, Alert, Slider, FormControl, InputLabel, Select, MenuItem,
+  ToggleButton, ToggleButtonGroup, Card, CardContent, CardMedia, Chip, Grid
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { colorPalettes, type ColorPalette } from '../theme/colorPalettes';
 import { type GlassThemeConfig } from '../theme/glassTheme';
+import { prebuiltThemes, type PrebuiltTheme, getAllCategories, getThemesByCategory } from '../theme/prebuiltThemes';
 import CloseIcon from '@mui/icons-material/Close';
+import PaletteIcon from '@mui/icons-material/Palette';
+import WallpaperIcon from '@mui/icons-material/Wallpaper';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import CategoryIcon from '@mui/icons-material/Category';
+import TuneIcon from '@mui/icons-material/Tune';
+import ColorLensIcon from '@mui/icons-material/ColorLens';
+import BlurOnIcon from '@mui/icons-material/BlurOn';
+import FormatPaintIcon from '@mui/icons-material/FormatPaint';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -34,6 +44,8 @@ interface SettingsModalProps {
   onColorPaletteChange: (paletteId: string) => void;
   glassConfig: GlassThemeConfig;
   onGlassConfigChange: (config: Partial<GlassThemeConfig>) => void;
+  // New pre-built theme props
+  onApplyPrebuiltTheme?: (theme: PrebuiltTheme) => void;
 }
 
 interface TabPanelProps {
@@ -69,15 +81,15 @@ function TabPanel(props: TabPanelProps) {
       aria-labelledby={`settings-tab-${index}`}
       style={{
         height: '100%',
-        overflow: 'visible' // Allow content to flow naturally within scrollable parent
+        overflow: 'visible'
       }}
       {...other}
     >
       {value === index && (
         <Box sx={{ 
-          p: { xs: 2, sm: 3 }, // Responsive padding
+          p: { xs: 2, sm: 3 },
           height: '100%',
-          minHeight: 'fit-content' // Ensure content determines height
+          minHeight: 'fit-content'
         }}>
           {children}
         </Box>
@@ -110,13 +122,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   currentColorPalette,
   onColorPaletteChange,
   glassConfig,
-  onGlassConfigChange
+  onGlassConfigChange,
+  onApplyPrebuiltTheme
 }) => {
   const [tabValue, setTabValue] = useState(0);
   const [userName, setUserName] = useState(initialUserName);
   const [locationInput, setLocationInput] = useState(currentLocation);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [uploadingWallpaper, setUploadingWallpaper] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [customThemeMode, setCustomThemeMode] = useState<'prebuilt' | 'custom'>('prebuilt');
 
   useEffect(() => {
     setUserName(initialUserName);
@@ -153,7 +168,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleConfirmReset = () => {
     localStorage.clear();
     setShowResetConfirm(false);
-    window.location.reload(); // Reload to apply cleared settings
+    window.location.reload();
   };
 
   const handleCancelReset = () => {
@@ -164,7 +179,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Check file type
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file');
       return;
@@ -176,21 +190,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     reader.onload = (e) => {
       const base64String = e.target?.result as string;
       
-      // Check if this wallpaper already exists
       if (customWallpapers.includes(base64String)) {
         alert('This wallpaper has already been uploaded');
         setUploadingWallpaper(false);
         return;
       }
       
-      // Add to custom wallpapers array via parent component
       onAddCustomWallpaper(base64String);
-      
-      // Set as current wallpaper
       onWallpaperChange(base64String);
       setUploadingWallpaper(false);
-      
-      // Reset file input
       event.target.value = '';
     };
 
@@ -200,6 +208,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     };
 
     reader.readAsDataURL(file);
+  };
+
+  const handleApplyPrebuiltTheme = (theme: PrebuiltTheme) => {
+    // Apply wallpaper
+    onWallpaperChange(theme.wallpaper);
+    
+    // Apply color palette
+    onColorPaletteChange(theme.colorPalette.id);
+    
+    // Apply glass configuration
+    onGlassConfigChange(theme.glassConfig);
+    
+    // Call the optional callback
+    if (onApplyPrebuiltTheme) {
+      onApplyPrebuiltTheme(theme);
+    }
+  };
+
+  const getFilteredThemes = () => {
+    if (selectedCategory === 'all') {
+      return prebuiltThemes;
+    }
+    return getThemesByCategory(selectedCategory as any);
   };
 
   // Animation variants
@@ -222,8 +253,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  const wallpaperItemVariants = {
-    initial: { opacity: 0, y: 10 },
+  const themeCardVariants = {
+    initial: { opacity: 0, y: 20 },
     animate: (i: number) => ({ 
       opacity: 1, 
       y: 0, 
@@ -233,8 +264,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       } 
     }),
     hover: { 
-      y: -5, 
-      boxShadow: "0px 10px 20px rgba(0,0,0,0.3)",
+      y: -8, 
+      scale: 1.02,
+      boxShadow: "0px 15px 30px rgba(0,0,0,0.4)",
       transition: { duration: 0.2 } 
     }
   };
@@ -248,7 +280,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
-        p: 2 // Add padding to prevent modal from touching screen edges
+        p: 2
       }}
     >
       <AnimatePresence>
@@ -260,9 +292,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             exit="exit"
             style={{ 
               width: '100%',
-              maxWidth: '900px', // Increased from 500px for better content display
-              minWidth: '320px', // Ensure minimum usable width
-              maxHeight: '90vh', // Prevent modal from being too tall
+              maxWidth: '1200px',
+              minWidth: '320px',
+              maxHeight: '90vh',
               display: 'flex',
               flexDirection: 'column'
             }}
@@ -281,19 +313,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 border: '1px solid rgba(255, 255, 255, 0.05) !important',
                 display: 'flex',
                 flexDirection: 'column',
-                // Responsive width adjustments
                 width: {
-                  xs: '95vw', // Mobile: almost full width
-                  sm: '85vw', // Small tablets: 85% width
-                  md: '75vw', // Medium screens: 75% width
-                  lg: '65vw', // Large screens: 65% width
-                  xl: '900px' // Extra large: fixed max width
+                  xs: '95vw',
+                  sm: '85vw',
+                  md: '75vw',
+                  lg: '65vw',
+                  xl: '1200px'
                 },
-                // Responsive height adjustments
                 height: {
-                  xs: '85vh', // Mobile: 85% height
-                  sm: '80vh', // Small tablets: 80% height
-                  md: '85vh', // Medium and up: 85% height
+                  xs: '85vh',
+                  sm: '80vh',
+                  md: '85vh',
                 }
               }}
             >
@@ -301,11 +331,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center', 
-                p: { xs: 2, sm: 2.5 }, // Responsive padding
+                p: { xs: 2, sm: 2.5 },
                 borderBottom: 1, 
                 borderColor: 'rgba(255, 255, 255, 0.05)',
                 position: 'relative',
-                flexShrink: 0 // Prevent header from shrinking
+                flexShrink: 0
               }}>
                 <Typography 
                   id="settings-modal-title" 
@@ -314,7 +344,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   sx={{
                     fontWeight: 600,
                     letterSpacing: '0.5px',
-                    fontSize: { xs: '1.25rem', sm: '1.5rem' } // Responsive font size
+                    fontSize: { xs: '1.25rem', sm: '1.5rem' }
                   }}
                 >
                   Settings
@@ -341,12 +371,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 flex: 1, 
                 display: 'flex', 
                 flexDirection: 'column',
-                overflow: 'hidden' // Prevent content overflow
+                overflow: 'hidden'
               }}>
                 <Box sx={{ 
                   borderBottom: 1, 
                   borderColor: 'rgba(255, 255, 255, 0.05)',
-                  flexShrink: 0 // Prevent tabs from shrinking
+                  flexShrink: 0
                 }}>
                   <Tabs 
                     value={tabValue} 
@@ -358,10 +388,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         transition: 'all 0.3s ease',
                         fontWeight: 500,
                         textTransform: 'none',
-                        fontSize: { xs: '0.85rem', sm: '0.95rem' }, // Responsive font size
+                        fontSize: { xs: '0.85rem', sm: '0.95rem' },
                         letterSpacing: '0.5px',
-                        minHeight: { xs: 40, sm: 48 }, // Responsive tab height
-                        padding: { xs: '6px 8px', sm: '12px 16px' } // Responsive padding
+                        minHeight: { xs: 40, sm: 48 },
+                        padding: { xs: '6px 8px', sm: '12px 16px' }
                       },
                       '& .Mui-selected': {
                         color: 'white !important',
@@ -377,8 +407,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   >
                     <Tab label="General" id="settings-tab-0" />
                     <Tab label="Widgets" id="settings-tab-1" />
-                    <Tab label="Wallpaper" id="settings-tab-2" />
-                    <Tab label="Theme" id="settings-tab-3" />
+                    <Tab label="Themes" id="settings-tab-2" />
                   </Tabs>
                 </Box>
 
@@ -401,6 +430,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     },
                   },
                 }}>
+                  {/* General Tab */}
                   <TabPanel value={tabValue} index={0}>
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
@@ -650,6 +680,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     </motion.div>
                   </TabPanel>
 
+                  {/* Widgets Tab */}
                   <TabPanel value={tabValue} index={1}>
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
@@ -730,672 +761,697 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     </motion.div>
                   </TabPanel>
 
+                  {/* New Combined Theme Design Tab */}
                   <TabPanel value={tabValue} index={2}>
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <Typography variant="subtitle1" gutterBottom sx={{ 
-                        mb: 2,
-                        fontWeight: 600,
-                        color: 'rgba(255, 255, 255, 0.9)',
-                        textAlign: 'left'
-                      }}>
-                        Select Wallpaper
-                      </Typography>
-
-                      {/* Custom Wallpaper Upload Section - Compact */}
-                      <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <input
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          id="wallpaper-upload"
-                          type="file"
-                          onChange={handleCustomWallpaperUpload}
-                        />
-                        <label htmlFor="wallpaper-upload">
-                          <Button
-                            variant="outlined"
-                            component="span"
-                            disabled={uploadingWallpaper}
-                            size="small"
-                            sx={{
-                              borderColor: 'rgba(255, 255, 255, 0.3)',
-                              color: 'white',
-                              fontSize: '0.8rem',
-                              '&:hover': {
-                                borderColor: 'var(--primary-color)',
-                                backgroundColor: 'rgba(138, 180, 248, 0.1)'
-                              },
-                              '&.Mui-disabled': {
-                                borderColor: 'rgba(255, 255, 255, 0.1)',
-                                color: 'rgba(255, 255, 255, 0.3)'
-                              }
-                            }}
-                          >
-                            {uploadingWallpaper ? 'Uploading...' : '+ Upload'}
-                          </Button>
-                        </label>
-                        
-                        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem' }}>
-                          JPG, PNG, WebP supported
-                        </Typography>
-                      </Box>
-
-                      {/* All Wallpapers Grid */}
-                      <Box sx={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: {
-                          xs: 'repeat(2, 1fr)', // Mobile: 2 columns
-                          sm: 'repeat(3, 1fr)', // Small tablets: 3 columns
-                          md: 'repeat(4, 1fr)', // Medium screens: 4 columns
-                          lg: 'repeat(5, 1fr)', // Large screens: 5 columns
-                          xl: 'repeat(6, 1fr)'  // Extra large: 6 columns
-                        }, 
-                        gap: { xs: 1.5, sm: 2 } // Responsive gap
-                      }}>
-                        {/* Default Wallpapers */}
-                        {WALLPAPERS.filter(wallpaper => !hiddenDefaultWallpapers.includes(wallpaper.path)).map((wallpaper, i) => (
-                          <Box key={wallpaper.id}>
-                            <motion.div
-                              custom={i}
-                              variants={wallpaperItemVariants}
-                              initial="initial"
-                              animate="animate"
-                              whileHover="hover"
-                            >
-                              <Box sx={{ position: 'relative' }}>
-                                <Box
-                                  onClick={() => onWallpaperChange(wallpaper.path)}
-                                  sx={{
-                                    height: { xs: 80, sm: 100 }, // Responsive height
-                                    width: '100%', // Full width of grid cell
-                                    aspectRatio: '1', // Maintain square aspect ratio
-                                    backgroundImage: `url(${wallpaper.path})`,
-                                    backgroundSize: 'cover',
-                                    backgroundPosition: 'center',
-                                    borderRadius: '12px',
-                                    cursor: 'pointer',
-                                    border: currentWallpaper === wallpaper.path 
-                                      ? '2px solid var(--primary-color)' 
-                                      : '2px solid transparent',
-                                    transition: 'all 0.3s ease',
-                                    boxShadow: currentWallpaper === wallpaper.path 
-                                      ? '0 0 15px rgba(138, 180, 248, 0.5)' 
-                                      : '0 5px 15px rgba(0, 0, 0, 0.2)',
-                                    '&:hover': {
-                                      opacity: 0.9,
-                                      transform: 'scale(1.03)',
-                                    }
-                                  }}
-                                />
-                                {/* Delete button for default wallpapers */}
-                                <IconButton
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDeleteDefaultWallpaper(wallpaper.path);
-                                  }}
-                                  sx={{
-                                    position: 'absolute',
-                                    top: 4,
-                                    right: 4,
-                                    width: 24,
-                                    height: 24,
-                                    backgroundColor: 'rgba(211, 47, 47, 0.9)',
-                                    color: 'white',
-                                    zIndex: 10,
-                                    '&:hover': {
-                                      backgroundColor: 'rgba(211, 47, 47, 1)',
-                                      transform: 'scale(1.1)'
-                                    },
-                                    '& .MuiSvgIcon-root': {
-                                      fontSize: '16px'
-                                    }
-                                  }}
-                                >
-                                  <CloseIcon />
-                                </IconButton>
-                              </Box>
-                              <Typography 
-                                variant="caption" 
-                                display="block" 
-                                align="center" 
-                                sx={{ 
-                                  mt: 1,
-                                  fontWeight: currentWallpaper === wallpaper.path ? 600 : 400,
-                                  color: currentWallpaper === wallpaper.path ? 'var(--primary-color)' : 'inherit',
-                                  transition: 'all 0.3s ease',
-                                  textShadow: currentWallpaper === wallpaper.path ? '0 0 5px rgba(138, 180, 248, 0.5)' : 'none',
-                                  fontSize: { xs: '0.7rem', sm: '0.75rem' } // Responsive font size
-                                }}
-                              >
-                                {wallpaper.name}
-                              </Typography>
-                            </motion.div>
-                          </Box>
-                        ))}
-
-                        {/* Custom Wallpapers */}
-                        {customWallpapers.map((customWallpaper, i) => (
-                          <Box key={`custom-${i}`}>
-                            <motion.div
-                              custom={WALLPAPERS.length + i}
-                              variants={wallpaperItemVariants}
-                              initial="initial"
-                              animate="animate"
-                              whileHover="hover"
-                            >
-                              <Box sx={{ position: 'relative' }}>
-                                <Box
-                                  onClick={() => onWallpaperChange(customWallpaper)}
-                                  sx={{
-                                    height: { xs: 80, sm: 100 }, // Responsive height
-                                    width: '100%', // Full width of grid cell
-                                    aspectRatio: '1', // Maintain square aspect ratio
-                                    backgroundImage: `url(${customWallpaper})`,
-                                    backgroundSize: 'cover',
-                                    backgroundPosition: 'center',
-                                    borderRadius: '12px',
-                                    cursor: 'pointer',
-                                    border: currentWallpaper === customWallpaper 
-                                      ? '2px solid var(--primary-color)' 
-                                      : '2px solid transparent',
-                                    transition: 'all 0.3s ease',
-                                    boxShadow: currentWallpaper === customWallpaper 
-                                      ? '0 0 15px rgba(138, 180, 248, 0.5)' 
-                                      : '0 5px 15px rgba(0, 0, 0, 0.2)',
-                                    '&:hover': {
-                                      opacity: 0.9,
-                                      transform: 'scale(1.03)',
-                                    }
-                                  }}
-                                />
-                                {/* Delete button for custom wallpapers */}
-                                <IconButton
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDeleteCustomWallpaper(customWallpaper);
-                                  }}
-                                  sx={{
-                                    position: 'absolute',
-                                    top: 4,
-                                    right: 4,
-                                    width: 24,
-                                    height: 24,
-                                    backgroundColor: 'rgba(211, 47, 47, 0.9)',
-                                    color: 'white',
-                                    zIndex: 10,
-                                    '&:hover': {
-                                      backgroundColor: 'rgba(211, 47, 47, 1)',
-                                      transform: 'scale(1.1)'
-                                    },
-                                    '& .MuiSvgIcon-root': {
-                                      fontSize: '16px'
-                                    }
-                                  }}
-                                >
-                                  <CloseIcon />
-                                </IconButton>
-                              </Box>
-                              <Typography 
-                                variant="caption" 
-                                display="block" 
-                                align="center" 
-                                sx={{ 
-                                  mt: 1,
-                                  fontWeight: currentWallpaper === customWallpaper ? 600 : 400,
-                                  color: currentWallpaper === customWallpaper ? 'var(--primary-color)' : 'inherit',
-                                  transition: 'all 0.3s ease',
-                                  textShadow: currentWallpaper === customWallpaper ? '0 0 5px rgba(138, 180, 248, 0.5)' : 'none',
-                                  fontSize: { xs: '0.7rem', sm: '0.75rem' } // Responsive font size
-                                }}
-                              >
-                                Custom {i + 1}
-                              </Typography>
-                            </motion.div>
-                          </Box>
-                        ))}
-                      </Box>
-                    </motion.div>
-                  </TabPanel>
-
-                  <TabPanel value={tabValue} index={3}>
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <Typography variant="subtitle1" gutterBottom sx={{ 
-                        mb: 3,
-                        fontWeight: 600,
-                        color: 'rgba(255, 255, 255, 0.9)',
-                        textAlign: 'left'
-                      }}>
-                        Theme & Glass Effects
-                      </Typography>
-
-                      {/* Color Palette Selection */}
-                      <Box sx={{ mb: 4 }}>
-                        <Typography variant="body2" gutterBottom sx={{ 
-                          color: 'rgba(255, 255, 255, 0.8)',
-                          fontWeight: 500,
-                          mb: 2,
-                          textAlign: 'left'
-                        }}>
-                          Color Palette
-                        </Typography>
-                        <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-                          <Select
-                            value={currentColorPalette.id}
-                            onChange={(e) => onColorPaletteChange(e.target.value)}
-                            sx={{
-                              backgroundColor: 'rgba(30, 30, 40, 0.7)',
-                              backdropFilter: 'blur(5px)',
-                              WebkitBackdropFilter: 'blur(5px)',
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'rgba(255, 255, 255, 0.1)',
-                              },
-                              '&:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'rgba(255, 255, 255, 0.3)',
-                              },
-                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: 'var(--primary-color)',
-                              },
-                              '& .MuiSelect-select': {
-                                color: 'white',
-                                padding: '10px 14px',
-                              },
-                              '& .MuiSvgIcon-root': {
-                                color: 'rgba(255, 255, 255, 0.7)',
-                              }
-                            }}
-                          >
-                            {colorPalettes.map((palette) => (
-                              <MenuItem key={palette.id} value={palette.id}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                  <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                    <Box sx={{ 
-                                      width: 16, 
-                                      height: 16, 
-                                      borderRadius: '50%', 
-                                      backgroundColor: palette.colors.primary,
-                                      border: '1px solid rgba(255,255,255,0.2)'
-                                    }} />
-                                    <Box sx={{ 
-                                      width: 16, 
-                                      height: 16, 
-                                      borderRadius: '50%', 
-                                      backgroundColor: palette.colors.secondary,
-                                      border: '1px solid rgba(255,255,255,0.2)'
-                                    }} />
-                                    <Box sx={{ 
-                                      width: 16, 
-                                      height: 16, 
-                                      borderRadius: '50%', 
-                                      backgroundColor: palette.colors.accent,
-                                      border: '1px solid rgba(255,255,255,0.2)'
-                                    }} />
-                                  </Box>
-                                  <Box>
-                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                      {palette.name}
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
-                                      {palette.description}
-                                    </Typography>
-                                  </Box>
-                                </Box>
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-
-                        {/* Color Preview */}
-                        <Box sx={{ 
-                          p: 2, 
-                          borderRadius: 2, 
-                          backgroundColor: 'rgba(30, 30, 40, 0.5)',
-                          border: '1px solid rgba(255, 255, 255, 0.1)'
-                        }}>
-                          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
-                            Preview Colors
-                          </Typography>
-                          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 1 }}>
-                            {[
-                              { label: 'Primary', color: currentColorPalette.colors.primary },
-                              { label: 'Secondary', color: currentColorPalette.colors.secondary },
-                              { label: 'Accent', color: currentColorPalette.colors.accent },
-                              { label: 'Glass BG', color: currentColorPalette.colors.glassBackground },
-                              { label: 'Success', color: currentColorPalette.colors.success },
-                              { label: 'Warning', color: currentColorPalette.colors.warning },
-                            ].map((item) => (
-                              <Box key={item.label} sx={{ textAlign: 'center' }}>
-                                <Box sx={{ 
-                                  width: '100%', 
-                                  height: 32, 
-                                  borderRadius: 1, 
-                                  backgroundColor: item.color,
-                                  border: '1px solid rgba(255,255,255,0.2)',
-                                  mb: 0.5
-                                }} />
-                                <Typography variant="caption" sx={{ 
-                                  color: 'rgba(255, 255, 255, 0.6)',
-                                  fontSize: '0.7rem'
-                                }}>
-                                  {item.label}
-                                </Typography>
-                              </Box>
-                            ))}
-                          </Box>
-                        </Box>
-                      </Box>
-
-                      {/* Glass Effect Configuration */}
-                      <Box sx={{ mb: 3 }}>
-                        <Typography variant="body2" gutterBottom sx={{ 
-                          color: 'rgba(255, 255, 255, 0.8)',
-                          fontWeight: 500,
-                          mb: 2,
-                          textAlign: 'left'
-                        }}>
-                          Glass Effect Settings
-                        </Typography>
-
-                        {/* Blur Intensity */}
-                        <Box sx={{ mb: 3 }}>
-                          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
-                            Blur Intensity: {glassConfig.blurIntensity}px
-                          </Typography>
-                          <Slider
-                            value={glassConfig.blurIntensity}
-                            onChange={(_, value) => onGlassConfigChange({ blurIntensity: value as number })}
-                            min={0}
-                            max={30}
-                            step={1}
-                            sx={{
-                              color: 'var(--primary-color)',
-                              '& .MuiSlider-thumb': {
-                                backgroundColor: 'var(--primary-color)',
-                                border: '2px solid rgba(255, 255, 255, 0.3)',
-                                '&:hover': {
-                                  boxShadow: '0 0 0 8px rgba(138, 180, 248, 0.16)',
-                                },
-                              },
-                              '& .MuiSlider-track': {
-                                backgroundColor: 'var(--primary-color)',
-                              },
-                              '& .MuiSlider-rail': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                              },
-                            }}
-                          />
-                        </Box>
-
-                        {/* Opacity */}
-                        <Box sx={{ mb: 3 }}>
-                          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
-                            Glass Opacity: {Math.round(glassConfig.opacity * 100)}%
-                          </Typography>
-                          <Slider
-                            value={glassConfig.opacity}
-                            onChange={(_, value) => onGlassConfigChange({ opacity: value as number })}
-                            min={0}
-                            max={0.5}
-                            step={0.01}
-                            sx={{
-                              color: 'var(--primary-color)',
-                              '& .MuiSlider-thumb': {
-                                backgroundColor: 'var(--primary-color)',
-                                border: '2px solid rgba(255, 255, 255, 0.3)',
-                                '&:hover': {
-                                  boxShadow: '0 0 0 8px rgba(138, 180, 248, 0.16)',
-                                },
-                              },
-                              '& .MuiSlider-track': {
-                                backgroundColor: 'var(--primary-color)',
-                              },
-                              '& .MuiSlider-rail': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                              },
-                            }}
-                          />
-                        </Box>
-
-                        {/* Border Radius */}
-                        <Box sx={{ mb: 3 }}>
-                          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
-                            Border Radius: {glassConfig.borderRadius}px
-                          </Typography>
-                          <Slider
-                            value={glassConfig.borderRadius}
-                            onChange={(_, value) => onGlassConfigChange({ borderRadius: value as number })}
-                            min={0}
-                            max={32}
-                            step={1}
-                            sx={{
-                              color: 'var(--primary-color)',
-                              '& .MuiSlider-thumb': {
-                                backgroundColor: 'var(--primary-color)',
-                                border: '2px solid rgba(255, 255, 255, 0.3)',
-                                '&:hover': {
-                                  boxShadow: '0 0 0 8px rgba(138, 180, 248, 0.16)',
-                                },
-                              },
-                              '& .MuiSlider-track': {
-                                backgroundColor: 'var(--primary-color)',
-                              },
-                              '& .MuiSlider-rail': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                              },
-                            }}
-                          />
-                        </Box>
-
-                        {/* Shadow Intensity */}
-                        <Box sx={{ mb: 3 }}>
-                          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
-                            Shadow Intensity: {Math.round(glassConfig.shadowIntensity * 100)}%
-                          </Typography>
-                          <Slider
-                            value={glassConfig.shadowIntensity}
-                            onChange={(_, value) => onGlassConfigChange({ shadowIntensity: value as number })}
-                            min={0}
-                            max={1}
-                            step={0.01}
-                            sx={{
-                              color: 'var(--primary-color)',
-                              '& .MuiSlider-thumb': {
-                                backgroundColor: 'var(--primary-color)',
-                                border: '2px solid rgba(255, 255, 255, 0.3)',
-                                '&:hover': {
-                                  boxShadow: '0 0 0 8px rgba(138, 180, 248, 0.16)',
-                                },
-                              },
-                              '& .MuiSlider-track': {
-                                backgroundColor: 'var(--primary-color)',
-                              },
-                              '& .MuiSlider-rail': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                              },
-                            }}
-                          />
-                        </Box>
-
-                        {/* Saturation */}
-                        <Box sx={{ mb: 3 }}>
-                          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
-                            Saturation: {glassConfig.saturation?.toFixed(1) || '1.8'}
-                          </Typography>
-                          <Slider
-                            value={glassConfig.saturation || 1.8}
-                            onChange={(_, value) => onGlassConfigChange({ saturation: value as number })}
-                            min={0.5}
-                            max={3}
-                            step={0.1}
-                            sx={{
-                              color: 'var(--primary-color)',
-                              '& .MuiSlider-thumb': {
-                                backgroundColor: 'var(--primary-color)',
-                                border: '2px solid rgba(255, 255, 255, 0.3)',
-                                '&:hover': {
-                                  boxShadow: '0 0 0 8px rgba(138, 180, 248, 0.16)',
-                                },
-                              },
-                              '& .MuiSlider-track': {
-                                backgroundColor: 'var(--primary-color)',
-                              },
-                              '& .MuiSlider-rail': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                              },
-                            }}
-                          />
-                        </Box>
-
-                        {/* Brightness */}
-                        <Box sx={{ mb: 3 }}>
-                          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
-                            Brightness: {glassConfig.brightness?.toFixed(1) || '1.1'}
-                          </Typography>
-                          <Slider
-                            value={glassConfig.brightness || 1.1}
-                            onChange={(_, value) => onGlassConfigChange({ brightness: value as number })}
-                            min={0.5}
-                            max={2}
-                            step={0.1}
-                            sx={{
-                              color: 'var(--primary-color)',
-                              '& .MuiSlider-thumb': {
-                                backgroundColor: 'var(--primary-color)',
-                                border: '2px solid rgba(255, 255, 255, 0.3)',
-                                '&:hover': {
-                                  boxShadow: '0 0 0 8px rgba(138, 180, 248, 0.16)',
-                                },
-                              },
-                              '& .MuiSlider-track': {
-                                backgroundColor: 'var(--primary-color)',
-                              },
-                              '& .MuiSlider-rail': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                              },
-                            }}
-                          />
-                        </Box>
-
-                        {/* Contrast */}
-                        <Box sx={{ mb: 3 }}>
-                          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
-                            Contrast: {glassConfig.contrast?.toFixed(1) || '1.2'}
-                          </Typography>
-                          <Slider
-                            value={glassConfig.contrast || 1.2}
-                            onChange={(_, value) => onGlassConfigChange({ contrast: value as number })}
-                            min={0.5}
-                            max={2}
-                            step={0.1}
-                            sx={{
-                              color: 'var(--primary-color)',
-                              '& .MuiSlider-thumb': {
-                                backgroundColor: 'var(--primary-color)',
-                                border: '2px solid rgba(255, 255, 255, 0.3)',
-                                '&:hover': {
-                                  boxShadow: '0 0 0 8px rgba(138, 180, 248, 0.16)',
-                                },
-                              },
-                              '& .MuiSlider-track': {
-                                backgroundColor: 'var(--primary-color)',
-                              },
-                              '& .MuiSlider-rail': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                              },
-                            }}
-                          />
-                        </Box>
-                      </Box>
-
-                      {/* Glass Presets */}
-                      <Box sx={{ mb: 3 }}>
-                        <Typography variant="body2" gutterBottom sx={{ 
-                          color: 'rgba(255, 255, 255, 0.8)',
-                          fontWeight: 500,
-                          mb: 2,
-                          textAlign: 'left'
-                        }}>
-                          Glass Effect Presets
-                        </Typography>
-                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
-                          {[
-                            { key: 'minimal', name: 'Minimal', desc: 'Subtle glass effect' },
-                            { key: 'subtle', name: 'Subtle', desc: 'Light glass effect' },
-                            { key: 'moderate', name: 'Moderate', desc: 'Balanced glass effect' },
-                            { key: 'intense', name: 'Intense', desc: 'Strong glass effect' }
-                          ].map((preset) => (
-                            <Button
-                              key={preset.key}
-                              variant="outlined"
-                              fullWidth
-                              size="small"
-                              onClick={() => {
-                                const presets = {
-                                  minimal: { blurIntensity: 4, opacity: 0.03, borderOpacity: 0.05, shadowIntensity: 0.1, borderRadius: 8, saturation: 1.2, brightness: 1.0, contrast: 1.0 },
-                                  subtle: { blurIntensity: 8, opacity: 0.05, borderOpacity: 0.1, shadowIntensity: 0.2, borderRadius: 12, saturation: 1.5, brightness: 1.05, contrast: 1.1 },
-                                  moderate: { blurIntensity: 12, opacity: 0.1, borderOpacity: 0.2, shadowIntensity: 0.3, borderRadius: 16, saturation: 1.8, brightness: 1.1, contrast: 1.2 },
-                                  intense: { blurIntensity: 20, opacity: 0.15, borderOpacity: 0.3, shadowIntensity: 0.4, borderRadius: 20, saturation: 2.2, brightness: 1.2, contrast: 1.3 }
-                                };
-                                onGlassConfigChange(presets[preset.key as keyof typeof presets]);
-                              }}
-                              sx={{
-                                borderColor: 'rgba(255, 255, 255, 0.3)',
-                                color: 'rgba(255, 255, 255, 0.8)',
-                                textTransform: 'none',
-                                '&:hover': {
-                                  borderColor: 'var(--primary-color)',
-                                  backgroundColor: 'rgba(138, 180, 248, 0.1)',
-                                }
-                              }}
-                            >
-                              <Box sx={{ textAlign: 'center' }}>
-                                <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
-                                  {preset.name}
-                                </Typography>
-                                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem' }}>
-                                  {preset.desc}
-                                </Typography>
-                              </Box>
-                            </Button>
-                          ))}
-                        </Box>
-                      </Box>
-
-                      {/* Reset to Default */}
-                      <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                        <Button
-                          variant="outlined"
-                          onClick={() => {
-                            onColorPaletteChange('purpleLove');
-                            onGlassConfigChange({
-                              blurIntensity: 12,
-                              opacity: 0.1,
-                              borderOpacity: 0.2,
-                              shadowIntensity: 0.3,
-                              borderRadius: 16,
-                              saturation: 1.8,
-                              brightness: 1.1,
-                              contrast: 1.2,
-                            });
-                          }}
+                      {/* Glass Theme Toggle Design */}
+                      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'center' }}>
+                        <ToggleButtonGroup
+                          value={customThemeMode}
+                          exclusive
+                          onChange={(event, newMode) => { if (newMode) setCustomThemeMode(newMode); }}
+                          aria-label="theme mode"
                           sx={{
-                            borderColor: 'rgba(255, 255, 255, 0.3)',
-                            color: 'rgba(255, 255, 255, 0.8)',
-                            '&:hover': {
-                              borderColor: 'var(--primary-color)',
-                              backgroundColor: 'rgba(138, 180, 248, 0.1)',
-                            }
+                            background: 'rgba(255, 255, 255, 0.08)',
+                            borderRadius: '12px',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            '& .MuiToggleButton-root': {
+                              color: 'rgba(255, 255, 255, 0.6)',
+                              px: 3,
+                              py: 1,
+                              textTransform: 'none',
+                              fontWeight: 500,
+                              fontSize: '0.9rem',
+                            },
+                            '& .Mui-selected': {
+                              color: 'rgba(255, 255, 255, 0.95)',
+                              backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                            },
+                            '& .MuiToggleButton-root:hover': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            },
                           }}
                         >
-                          Reset to Default Theme
-                        </Button>
+                          <ToggleButton value="prebuilt" aria-label="pre-built themes">Pre-built</ToggleButton>
+                          <ToggleButton value="custom" aria-label="custom themes">Custom</ToggleButton>
+                        </ToggleButtonGroup>
                       </Box>
+
+                      {/* Pre-built Themes Section */}
+                      {customThemeMode === 'prebuilt' && (
+                        <Box>
+                          {/* Enhanced Category Filter with Modern Design */}
+                          <Box sx={{ 
+                            mb: 4, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 3, 
+                            flexWrap: 'wrap', 
+                            justifyContent: 'center',
+                            p: 3,
+                            background: 'linear-gradient(145deg, rgba(20, 20, 30, 0.8), rgba(15, 15, 25, 0.9))',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)',
+                            borderRadius: '20px',
+                            border: '1px solid rgba(255, 255, 255, 0.06)',
+                            boxShadow: '0 15px 35px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(255, 255, 255, 0.04) inset'
+                          }}>
+                            <Box sx={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: 1,
+                              mb: { xs: 1, sm: 0 }
+                            }}>
+                              <CategoryIcon sx={{ 
+                                color: 'var(--primary-color)', 
+                                fontSize: 18,
+                                filter: 'drop-shadow(0 0 8px rgba(138, 180, 248, 0.3))'
+                              }} />
+                              <Typography variant="body2" sx={{ 
+                                color: 'rgba(255, 255, 255, 0.8)', 
+                                fontWeight: 500,
+                                fontSize: '0.85rem'
+                              }}>
+                                Filter
+                              </Typography>
+                            </Box>
+                            
+                            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', justifyContent: 'center' }}>
+                              <Chip
+                                label="All"
+                                onClick={() => setSelectedCategory('all')}
+                                variant={selectedCategory === 'all' ? 'filled' : 'outlined'}
+                                sx={{
+                                  background: selectedCategory === 'all' 
+                                    ? 'linear-gradient(135deg, var(--primary-color), #667eea)' 
+                                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02))',
+                                  backdropFilter: 'blur(10px)',
+                                  WebkitBackdropFilter: 'blur(10px)',
+                                  borderColor: selectedCategory === 'all' 
+                                    ? 'transparent' 
+                                    : 'rgba(255, 255, 255, 0.15)',
+                                  color: selectedCategory === 'all' 
+                                    ? 'white' 
+                                    : 'rgba(255, 255, 255, 0.8)',
+                                  fontWeight: 600,
+                                  fontSize: '0.85rem',
+                                  letterSpacing: '0.2px',
+                                  boxShadow: selectedCategory === 'all' 
+                                    ? '0 8px 20px rgba(138, 180, 248, 0.3)' 
+                                    : '0 4px 12px rgba(0, 0, 0, 0.2)',
+                                  transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                  '&:hover': {
+                                    background: selectedCategory === 'all' 
+                                      ? 'linear-gradient(135deg, var(--primary-color), #667eea)' 
+                                      : 'rgba(255, 255, 255, 0.1)',
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: selectedCategory === 'all' 
+                                      ? '0 12px 28px rgba(138, 180, 248, 0.4)' 
+                                      : '0 8px 20px rgba(255, 255, 255, 0.1)',
+                                  }
+                                }}
+                              />
+                              {getAllCategories().map((category) => (
+                                <Chip
+                                  key={category}
+                                  label={category.charAt(0).toUpperCase() + category.slice(1)}
+                                  onClick={() => setSelectedCategory(category)}
+                                  variant={selectedCategory === category ? 'filled' : 'outlined'}
+                                  sx={{
+                                    background: selectedCategory === category 
+                                      ? 'linear-gradient(135deg, var(--primary-color), #667eea)' 
+                                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02))',
+                                    backdropFilter: 'blur(10px)',
+                                    WebkitBackdropFilter: 'blur(10px)',
+                                    borderColor: selectedCategory === category 
+                                      ? 'transparent' 
+                                      : 'rgba(255, 255, 255, 0.15)',
+                                    color: selectedCategory === category 
+                                      ? 'white' 
+                                      : 'rgba(255, 255, 255, 0.8)',
+                                    fontWeight: 600,
+                                    fontSize: '0.85rem',
+                                    letterSpacing: '0.2px',
+                                    boxShadow: selectedCategory === category 
+                                      ? '0 8px 20px rgba(138, 180, 248, 0.3)' 
+                                      : '0 4px 12px rgba(0, 0, 0, 0.2)',
+                                    transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                    '&:hover': {
+                                      background: selectedCategory === category 
+                                        ? 'linear-gradient(135deg, var(--primary-color), #667eea)' 
+                                        : 'rgba(255, 255, 255, 0.1)',
+                                      transform: 'translateY(-2px)',
+                                      boxShadow: selectedCategory === category 
+                                        ? '0 12px 28px rgba(138, 180, 248, 0.4)' 
+                                        : '0 8px 20px rgba(255, 255, 255, 0.1)',
+                                    }
+                                  }}
+                                />
+                              ))}
+                            </Box>
+                          </Box>
+
+                          {/* Pre-built Themes Grid - Using Box instead of Grid */}
+                          <Box sx={{ 
+                            display: 'grid',
+                            gridTemplateColumns: {
+                              xs: '1fr',
+                              sm: 'repeat(2, 1fr)',
+                              md: 'repeat(3, 1fr)'
+                            },
+                            gap: 3,
+                            mb: 2
+                          }}>
+                            {getFilteredThemes().map((theme, index) => (
+                              <motion.div
+                                key={theme.id}
+                                custom={index}
+                                variants={themeCardVariants}
+                                initial="initial"
+                                animate="animate"
+                                whileHover="hover"
+                              >
+                                <Card
+                                  onClick={() => handleApplyPrebuiltTheme(theme)}
+                                  sx={{
+                                    cursor: 'pointer',
+                                    background: 'linear-gradient(145deg, rgba(25, 25, 35, 0.95), rgba(20, 20, 30, 0.9))',
+                                    backdropFilter: 'blur(20px)',
+                                    WebkitBackdropFilter: 'blur(20px)',
+                                    border: currentWallpaper === theme.wallpaper 
+                                      ? '2px solid var(--primary-color)' 
+                                      : '1px solid rgba(255, 255, 255, 0.08)',
+                                    borderRadius: '20px',
+                                    overflow: 'hidden',
+                                    transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                    position: 'relative',
+                                    boxShadow: currentWallpaper === theme.wallpaper 
+                                      ? '0 20px 40px rgba(138, 180, 248, 0.3), 0 0 0 1px rgba(138, 180, 248, 0.2)' 
+                                      : '0 10px 30px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255, 255, 255, 0.05) inset',
+                                    '&::before': {
+                                      content: '""',
+                                      position: 'absolute',
+                                      top: 0,
+                                      left: 0,
+                                      right: 0,
+                                      height: '1px',
+                                      background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent)',
+                                      opacity: 0.6
+                                    },
+                                    '&:hover': {
+                                      borderColor: 'var(--primary-color)',
+                                      transform: 'translateY(-8px) scale(1.02)',
+                                      boxShadow: '0 25px 50px rgba(138, 180, 248, 0.25), 0 0 0 1px rgba(138, 180, 248, 0.3)',
+                                      '& .theme-preview': {
+                                        transform: 'scale(1.05)',
+                                        filter: 'brightness(1.1) saturate(1.2)',
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <Box sx={{ position: 'relative', overflow: 'hidden' }}>
+                                    <CardMedia
+                                      component="img"
+                                      height="140"
+                                      image={theme.wallpaper}
+                                      alt={theme.name}
+                                      className="theme-preview"
+                                      sx={{
+                                        objectFit: 'cover',
+                                        filter: 'brightness(0.85) saturate(1.1)',
+                                        transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                      }}
+                                    />
+                                    <Box
+                                      sx={{
+                                        position: 'absolute',
+                                        bottom: 0,
+                                        left: 0,
+                                        right: 0,
+                                        height: '50%',
+                                        background: 'linear-gradient(transparent, rgba(0, 0, 0, 0.7))',
+                                      }}
+                                    />
+                                    {currentWallpaper === theme.wallpaper && (
+                                      <Box
+                                        sx={{
+                                          position: 'absolute',
+                                          top: 12,
+                                          right: 12,
+                                          background: 'linear-gradient(135deg, var(--primary-color), #667eea)',
+                                          borderRadius: '50%',
+                                          width: 28,
+                                          height: 28,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          boxShadow: '0 4px 12px rgba(138, 180, 248, 0.4)',
+                                          animation: 'pulse 2s infinite'
+                                        }}
+                                      >
+                                        <AutoAwesomeIcon sx={{ fontSize: 16, color: 'white' }} />
+                                      </Box>
+                                    )}
+                                  </Box>
+                                  <CardContent sx={{ 
+                                    p: 3, 
+                                    background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01))',
+                                    position: 'relative'
+                                  }}>
+                                    <Typography variant="h6" sx={{ 
+                                      color: 'white', 
+                                      fontWeight: 700,
+                                      fontSize: '1.1rem',
+                                      mb: 1,
+                                      letterSpacing: '0.3px'
+                                    }}>
+                                      {theme.name}
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ 
+                                      color: 'rgba(255, 255, 255, 0.7)',
+                                      fontSize: '0.9rem',
+                                      mb: 2,
+                                      lineHeight: 1.5,
+                                      fontWeight: 400
+                                    }}>
+                                      {theme.description}
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <Chip
+                                        label={theme.category}
+                                        size="small"
+                                        sx={{
+                                          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))',
+                                          color: 'rgba(255, 255, 255, 0.9)',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 500,
+                                          backdropFilter: 'blur(10px)',
+                                          WebkitBackdropFilter: 'blur(10px)',
+                                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                                          textTransform: 'capitalize'
+                                        }}
+                                      />
+                                      <Box sx={{ 
+                                        fontSize: '0.75rem', 
+                                        color: 'rgba(255, 255, 255, 0.6)',
+                                        fontWeight: 500
+                                      }}>
+                                        Click to apply
+                                      </Box>
+                                    </Box>
+                                  </CardContent>
+                                </Card>
+                              </motion.div>
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
+
+                      {/* Custom Theme Design Section */}
+                      {customThemeMode === 'custom' && (
+                        <Box>
+                          {/* Custom Wallpaper Upload Section */}
+                          <Box sx={{ mb: 4 }}>
+                            <Typography variant="subtitle2" gutterBottom sx={{ 
+                              color: 'rgba(255, 255, 255, 0.8)',
+                              fontWeight: 500,
+                              mb: 2,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              fontSize: '0.9rem'
+                            }}>
+                              <WallpaperIcon sx={{ fontSize: 18 }} />
+                              Wallpapers
+                            </Typography>
+
+                            {/* Upload Section */}
+                            <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <input
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                id="wallpaper-upload"
+                                type="file"
+                                onChange={handleCustomWallpaperUpload}
+                              />
+                              <label htmlFor="wallpaper-upload">
+                                <Button
+                                  variant="outlined"
+                                  component="span"
+                                  disabled={uploadingWallpaper}
+                                  size="small"
+                                  sx={{
+                                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                                    color: 'white',
+                                    fontSize: '0.8rem',
+                                    '&:hover': {
+                                      borderColor: 'var(--primary-color)',
+                                      backgroundColor: 'rgba(138, 180, 248, 0.1)'
+                                    },
+                                    '&.Mui-disabled': {
+                                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                                      color: 'rgba(255, 255, 255, 0.3)'
+                                    }
+                                  }}
+                                >
+                                  {uploadingWallpaper ? 'Uploading...' : '+ Upload Custom'}
+                                </Button>
+                              </label>
+                              
+                              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem' }}>
+                                JPG, PNG, WebP supported
+                              </Typography>
+                            </Box>
+
+                            {/* Wallpaper Grid */}
+                            <Box sx={{ 
+                              display: 'grid', 
+                              gridTemplateColumns: {
+                                xs: 'repeat(3, 1fr)',
+                                sm: 'repeat(4, 1fr)',
+                                md: 'repeat(5, 1fr)',
+                                lg: 'repeat(6, 1fr)'
+                              }, 
+                              gap: { xs: 1.5, sm: 2 }
+                            }}>
+                              {/* Default Wallpapers */}
+                              {WALLPAPERS.filter(wallpaper => !hiddenDefaultWallpapers.includes(wallpaper.path)).map((wallpaper, i) => (
+                                <Box key={wallpaper.id} sx={{ position: 'relative' }}>
+                                  <Box
+                                    onClick={() => onWallpaperChange(wallpaper.path)}
+                                    sx={{
+                                      height: { xs: 60, sm: 80 },
+                                      width: '100%',
+                                      aspectRatio: '1',
+                                      backgroundImage: `url(${wallpaper.path})`,
+                                      backgroundSize: 'cover',
+                                      backgroundPosition: 'center',
+                                      borderRadius: '8px',
+                                      cursor: 'pointer',
+                                      border: currentWallpaper === wallpaper.path 
+                                        ? '2px solid var(--primary-color)' 
+                                        : '2px solid transparent',
+                                      transition: 'all 0.3s ease',
+                                      boxShadow: currentWallpaper === wallpaper.path 
+                                        ? '0 0 15px rgba(138, 180, 248, 0.5)' 
+                                        : '0 5px 15px rgba(0, 0, 0, 0.2)',
+                                      '&:hover': {
+                                        opacity: 0.9,
+                                        transform: 'scale(1.03)',
+                                      }
+                                    }}
+                                  />
+                                  <IconButton
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDeleteDefaultWallpaper(wallpaper.path);
+                                    }}
+                                    sx={{
+                                      position: 'absolute',
+                                      top: 2,
+                                      right: 2,
+                                      width: 20,
+                                      height: 20,
+                                      backgroundColor: 'rgba(211, 47, 47, 0.9)',
+                                      color: 'white',
+                                      zIndex: 10,
+                                      '&:hover': {
+                                        backgroundColor: 'rgba(211, 47, 47, 1)',
+                                        transform: 'scale(1.1)'
+                                      },
+                                      '& .MuiSvgIcon-root': {
+                                        fontSize: '14px'
+                                      }
+                                    }}
+                                  >
+                                    <CloseIcon />
+                                  </IconButton>
+                                </Box>
+                              ))}
+
+                              {/* Custom Wallpapers */}
+                              {customWallpapers.map((customWallpaper, i) => (
+                                <Box key={`custom-${i}`} sx={{ position: 'relative' }}>
+                                  <Box
+                                    onClick={() => onWallpaperChange(customWallpaper)}
+                                    sx={{
+                                      height: { xs: 60, sm: 80 },
+                                      width: '100%',
+                                      aspectRatio: '1',
+                                      backgroundImage: `url(${customWallpaper})`,
+                                      backgroundSize: 'cover',
+                                      backgroundPosition: 'center',
+                                      borderRadius: '8px',
+                                      cursor: 'pointer',
+                                      border: currentWallpaper === customWallpaper 
+                                        ? '2px solid var(--primary-color)' 
+                                        : '2px solid transparent',
+                                      transition: 'all 0.3s ease',
+                                      boxShadow: currentWallpaper === customWallpaper 
+                                        ? '0 0 15px rgba(138, 180, 248, 0.5)' 
+                                        : '0 5px 15px rgba(0, 0, 0, 0.2)',
+                                      '&:hover': {
+                                        opacity: 0.9,
+                                        transform: 'scale(1.03)',
+                                      }
+                                    }}
+                                  />
+                                  <IconButton
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDeleteCustomWallpaper(customWallpaper);
+                                    }}
+                                    sx={{
+                                      position: 'absolute',
+                                      top: 2,
+                                      right: 2,
+                                      width: 20,
+                                      height: 20,
+                                      backgroundColor: 'rgba(211, 47, 47, 0.9)',
+                                      color: 'white',
+                                      zIndex: 10,
+                                      '&:hover': {
+                                        backgroundColor: 'rgba(211, 47, 47, 1)',
+                                        transform: 'scale(1.1)'
+                                      },
+                                      '& .MuiSvgIcon-root': {
+                                        fontSize: '14px'
+                                      }
+                                    }}
+                                  >
+                                    <CloseIcon />
+                                  </IconButton>
+                                </Box>
+                              ))}
+                            </Box>
+                          </Box>
+
+                          {/* Color Palette Selection */}
+                          <Box sx={{ mb: 4 }}>
+                            <Typography variant="subtitle2" gutterBottom sx={{ 
+                              color: 'rgba(255, 255, 255, 0.8)',
+                              fontWeight: 500,
+                              mb: 2,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              fontSize: '0.9rem'
+                            }}>
+                              <ColorLensIcon sx={{ fontSize: 18 }} />
+                              Colors
+                            </Typography>
+                            <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                              <Select
+                                value={currentColorPalette.id}
+                                onChange={(e) => onColorPaletteChange(e.target.value)}
+                                sx={{
+                                  backgroundColor: 'rgba(30, 30, 40, 0.7)',
+                                  backdropFilter: 'blur(5px)',
+                                  WebkitBackdropFilter: 'blur(5px)',
+                                  '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                                  },
+                                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                                  },
+                                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'var(--primary-color)',
+                                  },
+                                  '& .MuiSelect-select': {
+                                    color: 'white',
+                                    padding: '10px 14px',
+                                  },
+                                  '& .MuiSvgIcon-root': {
+                                    color: 'rgba(255, 255, 255, 0.7)',
+                                  }
+                                }}
+                              >
+                                {colorPalettes.map((palette) => (
+                                  <MenuItem key={palette.id} value={palette.id}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                        <Box sx={{ 
+                                          width: 16, 
+                                          height: 16, 
+                                          borderRadius: '50%', 
+                                          backgroundColor: palette.colors.primary,
+                                          border: '1px solid rgba(255,255,255,0.2)'
+                                        }} />
+                                        <Box sx={{ 
+                                          width: 16, 
+                                          height: 16, 
+                                          borderRadius: '50%', 
+                                          backgroundColor: palette.colors.secondary,
+                                          border: '1px solid rgba(255,255,255,0.2)'
+                                        }} />
+                                        <Box sx={{ 
+                                          width: 16, 
+                                          height: 16, 
+                                          borderRadius: '50%', 
+                                          backgroundColor: palette.colors.accent,
+                                          border: '1px solid rgba(255,255,255,0.2)'
+                                        }} />
+                                      </Box>
+                                      <Box>
+                                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                          {palette.name}
+                                        </Typography>
+                                      </Box>
+                                    </Box>
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </Box>
+
+                          {/* Glass Effect Configuration */}
+                          <Box sx={{ mb: 3 }}>
+                            <Typography variant="subtitle2" gutterBottom sx={{ 
+                              color: 'rgba(255, 255, 255, 0.8)',
+                              fontWeight: 500,
+                              mb: 2,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              fontSize: '0.9rem'
+                            }}>
+                              <BlurOnIcon sx={{ fontSize: 18 }} />
+                              Glass Effects
+                            </Typography>
+
+                            {/* Blur Intensity */}
+                            <Box sx={{ mb: 2 }}>
+                              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
+                                Blur Intensity: {glassConfig.blurIntensity}px
+                              </Typography>
+                              <Slider
+                                value={glassConfig.blurIntensity}
+                                onChange={(_, value) => onGlassConfigChange({ blurIntensity: value as number })}
+                                min={0}
+                                max={30}
+                                step={1}
+                                sx={{
+                                  color: 'var(--primary-color)',
+                                  '& .MuiSlider-thumb': {
+                                    backgroundColor: 'var(--primary-color)',
+                                    border: '2px solid rgba(255, 255, 255, 0.3)',
+                                  },
+                                  '& .MuiSlider-track': {
+                                    backgroundColor: 'var(--primary-color)',
+                                  },
+                                  '& .MuiSlider-rail': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                  },
+                                }}
+                              />
+                            </Box>
+
+                            {/* Opacity */}
+                            <Box sx={{ mb: 2 }}>
+                              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 1, display: 'block' }}>
+                                Glass Opacity: {Math.round(glassConfig.opacity * 100)}%
+                              </Typography>
+                              <Slider
+                                value={glassConfig.opacity}
+                                onChange={(_, value) => onGlassConfigChange({ opacity: value as number })}
+                                min={0}
+                                max={0.5}
+                                step={0.01}
+                                sx={{
+                                  color: 'var(--primary-color)',
+                                  '& .MuiSlider-thumb': {
+                                    backgroundColor: 'var(--primary-color)',
+                                    border: '2px solid rgba(255, 255, 255, 0.3)',
+                                  },
+                                  '& .MuiSlider-track': {
+                                    backgroundColor: 'var(--primary-color)',
+                                  },
+                                  '& .MuiSlider-rail': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                  },
+                                }}
+                              />
+                            </Box>
+
+                            {/* Glass Presets */}
+                            <Box sx={{ mt: 3 }}>
+                              <Typography variant="body2" gutterBottom sx={{ 
+                                color: 'rgba(255, 255, 255, 0.8)',
+                                fontWeight: 500,
+                                mb: 2
+                              }}>
+                                Glass Effect Presets
+                              </Typography>
+                              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
+                                {[
+                                  { key: 'minimal', name: 'Minimal', desc: 'Subtle glass effect' },
+                                  { key: 'subtle', name: 'Subtle', desc: 'Light glass effect' },
+                                  { key: 'moderate', name: 'Moderate', desc: 'Balanced glass effect' },
+                                  { key: 'intense', name: 'Intense', desc: 'Strong glass effect' }
+                                ].map((preset) => (
+                                  <Button
+                                    key={preset.key}
+                                    variant="outlined"
+                                    fullWidth
+                                    size="small"
+                                    onClick={() => {
+                                      const presets = {
+                                        minimal: { blurIntensity: 4, opacity: 0.03, borderOpacity: 0.05, shadowIntensity: 0.1, borderRadius: 8, saturation: 1.2, brightness: 1.0, contrast: 1.0 },
+                                        subtle: { blurIntensity: 8, opacity: 0.05, borderOpacity: 0.1, shadowIntensity: 0.2, borderRadius: 12, saturation: 1.5, brightness: 1.05, contrast: 1.1 },
+                                        moderate: { blurIntensity: 12, opacity: 0.1, borderOpacity: 0.2, shadowIntensity: 0.3, borderRadius: 16, saturation: 1.8, brightness: 1.1, contrast: 1.2 },
+                                        intense: { blurIntensity: 20, opacity: 0.15, borderOpacity: 0.3, shadowIntensity: 0.4, borderRadius: 20, saturation: 2.2, brightness: 1.2, contrast: 1.3 }
+                                      };
+                                      onGlassConfigChange(presets[preset.key as keyof typeof presets]);
+                                    }}
+                                    sx={{
+                                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                                      color: 'rgba(255, 255, 255, 0.8)',
+                                      textTransform: 'none',
+                                      '&:hover': {
+                                        borderColor: 'var(--primary-color)',
+                                        backgroundColor: 'rgba(138, 180, 248, 0.1)',
+                                      }
+                                    }}
+                                  >
+                                    <Box sx={{ textAlign: 'center' }}>
+                                      <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
+                                        {preset.name}
+                                      </Typography>
+                                      <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem' }}>
+                                        {preset.desc}
+                                      </Typography>
+                                    </Box>
+                                  </Button>
+                                ))}
+                              </Box>
+                            </Box>
+                          </Box>
+                        </Box>
+                      )}
                     </motion.div>
                   </TabPanel>
                 </Box>
