@@ -687,6 +687,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3 }}
                     >
+                      {/* Layout Prioritization Info */}
+                      <Alert 
+                        severity="info" 
+                        sx={{ 
+                          mb: 3,
+                          background: 'linear-gradient(135deg, rgba(138, 180, 248, 0.1), rgba(197, 138, 249, 0.1))',
+                          border: '1px solid rgba(138, 180, 248, 0.3)',
+                          borderRadius: 'var(--radius-lg)',
+                          color: 'rgba(255, 255, 255, 0.9)',
+                          '& .MuiAlert-icon': {
+                            color: 'var(--primary-color)'
+                          }
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+                          Layout Behavior
+                        </Typography>
+                        <Typography variant="caption" sx={{ display: 'block', opacity: 0.8 }}>
+                          Widget positions are preserved when you show/hide widgets or change column count. 
+                          Use the "Auto arrange" button in edit mode for automatic repositioning when needed.
+                        </Typography>
+                      </Alert>
+
                       <Typography variant="subtitle1" gutterBottom sx={{ 
                         mb: 2,
                         fontWeight: 600,

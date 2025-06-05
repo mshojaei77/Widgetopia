@@ -198,6 +198,43 @@ const sunsetColorPalette: ColorPalette = {
   }
 };
 
+const persepolisColorPalette: ColorPalette = {
+  id: 'persepolisTheme',
+  name: 'Ancient Persepolis',
+  description: 'Majestic colors of ancient Persian empire with golds, bronzes, and royal blues',
+  colors: {
+    primary: '#D4AF37',
+    primaryLight: '#F0D060',
+    primaryDark: '#B8941F',
+    
+    secondary: '#CD7F32',
+    secondaryLight: '#E0965B',
+    secondaryDark: '#A0622A',
+    
+    accent: '#1E3A8A',
+    accentLight: '#3B82F6',
+    accentDark: '#1E40AF',
+    
+    glassBackground: 'rgba(212, 175, 55, 0.18)',
+    glassBorder: 'rgba(240, 208, 96, 0.35)',
+    glassHighlight: 'rgba(255, 248, 220, 0.25)',
+    glassShadow: 'rgba(30, 58, 138, 0.4)',
+    
+    textPrimary: '#FFF8DC',
+    textSecondary: '#F5E6A3',
+    textMuted: '#D4AF37',
+    
+    backgroundPrimary: '#1A1610',
+    backgroundSecondary: '#2D2520',
+    backgroundTertiary: '#4A3B2A',
+    
+    success: '#059669',
+    warning: '#D97706',
+    error: '#DC2626',
+    info: '#1E3A8A',
+  }
+};
+
 const oceanColorPalette: ColorPalette = {
   id: 'oceanTheme',
   name: 'Ocean Depths',
@@ -580,6 +617,15 @@ export const prebuiltThemes: PrebuiltTheme[] = [
     wallpaper: '/wallpapers/pastel_clouds_minimal.jpg',
     colorPalette: sunsetColorPalette,
     glassConfig: minimalGlass,
+  },
+  {
+    id: 'persepolis',
+    name: 'Ancient Persepolis',
+    description: 'Majestic colors of ancient Persian empire with golds, bronzes, and royal blues',
+    category: 'vintage',
+    wallpaper: '/wallpapers/Persepolis.jpg',
+    colorPalette: persepolisColorPalette,
+    glassConfig: moderateGlass,
   },
 ];
 

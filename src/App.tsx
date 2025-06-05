@@ -42,6 +42,7 @@ import Github from './widgets/Github'; // Import the GitHub widget
 import Timer from './widgets/Timer'; // Import the Timer widget
 import BrowserHistory from './widgets/BrowserHistory'; // Import the BrowserHistory widget
 import NotesReminders from './widgets/NotesReminders'; // Import the NotesReminders widget (now includes todos)
+import DailyQuotes from './widgets/DailyQuotes'; // Import the Daily Quotes widget
 
 // import './App.css'; // Removed as file doesn't exist
 
@@ -403,6 +404,7 @@ const App = () => {
     { id: 'timer', name: 'Working Timer', component: Timer }, // Add Timer widget
     { id: 'browserhistory', name: 'Browser History', component: BrowserHistory }, // Add BrowserHistory widget
     { id: 'notesreminders', name: 'Notes, Reminders & Todos', component: NotesReminders }, // Add NotesReminders widget (now includes todos)
+    { id: 'dailyquotes', name: 'Daily Quotes', component: DailyQuotes }, // Add Daily Quotes widget
   ];
 
   // Widget Visibility State
@@ -423,6 +425,7 @@ const App = () => {
       timer: true,
       browserhistory: false, // Browser History widget - visible in logged layout
       notesreminders: true, // Notes, Reminders & Todos widget - visible in logged layout
+      dailyquotes: true, // Daily Quotes widget - visible by default
     };
   });
 
@@ -520,20 +523,21 @@ const App = () => {
     if (storedLayouts) {
       return JSON.parse(storedLayouts);
     }
-    // Layout and heights matching the image
+    // Layout with quicklinks prioritized at the top
     return {
-      weather:        { i: 'weather',        x: 0,  y: 0,  w: 3, h: 12 },
-      quicklinks:     { i: 'quicklinks',     x: 3,  y: 0,  w: 6, h: 6 },
-      github:         { i: 'github',         x: 9,  y: 0,  w: 3, h: 14 },
+      quicklinks:     { i: 'quicklinks',     x: 3,  y: 0,  w: 6, h: 6 }, // Quicklinks at the very top
+      weather:        { i: 'weather',        x: 0,  y: 6,  w: 3, h: 12 }, // Weather starts after quicklinks
+      github:         { i: 'github',         x: 9,  y: 6,  w: 3, h: 14 },
 
-      music:          { i: 'music',          x: 0,  y: 12, w: 3, h: 14 },
+      music:          { i: 'music',          x: 0,  y: 18, w: 3, h: 14 },
       notesreminders: { i: 'notesreminders', x: 3,  y: 6,  w: 3, h: 20 },
       rss:            { i: 'rss',            x: 6,  y: 6,  w: 3, h: 20 },
-      browserhistory: { i: 'browserhistory', x: 9,  y: 11, w: 3, h: 15 },
+      browserhistory: { i: 'browserhistory', x: 9,  y: 20, w: 3, h: 15 },
+      dailyquotes:    { i: 'dailyquotes',    x: 0,  y: 32, w: 3, h: 12 }, // Daily Quotes widget
       
       clock:          { i: 'clock',          x: 3,  y: 26, w: 3, h: 6 },
-      calendar:       { i: 'calendar',       x: 9,  y: 0,  w: 3, h: 14 },
-      timer:          { i: 'timer',          x: 9,  y: 26, w: 3, h: 12 },
+      calendar:       { i: 'calendar',       x: 6,  y: 26, w: 3, h: 12 },
+      timer:          { i: 'timer',          x: 9,  y: 35, w: 3, h: 8 },
     };
   });
 
@@ -763,7 +767,7 @@ const App = () => {
     return () => clearInterval(intervalId);
   }, [wallpaperShuffle, customWallpapers, hiddenDefaultWallpapers]);
 
-  // Calculate optimal widget layout based on column count
+  // Calculate optimal widget layout based on column count with responsive considerations
   const generateOptimalLayout = useCallback(() => {
     const newLayouts: Record<string, WidgetLayout> = {};
     const visibleWidgets = availableWidgets.filter(w => widgetVisibility[w.id]);
@@ -776,7 +780,28 @@ const App = () => {
     
     visibleWidgets.forEach(widget => {
       const currentLayout = widgetLayouts[widget.id] || { w: 2, h: 2, x: 0, y: 0 };
-      const width = Math.min(currentLayout.w, cols); // Ensure width doesn't exceed column count
+      
+      // Ensure widget dimensions are responsive-friendly
+      let width = Math.min(currentLayout.w, cols);
+      let height = currentLayout.h;
+      
+      // Adjust widget size based on type for better responsive behavior
+      switch (widget.id) {
+        case 'quicklinks':
+          // Quick links can be wider on large screens but should scale down
+          width = Math.min(width, Math.floor(cols * 0.5)); // Max 50% of available columns
+          break;
+        case 'weather':
+        case 'calendar':
+        case 'music':
+          // These widgets work well at medium sizes
+          width = Math.min(width, Math.floor(cols * 0.25)); // Max 25% of available columns
+          break;
+        default:
+          // Other widgets can use their original size but capped
+          width = Math.min(width, Math.floor(cols * 0.33)); // Max 33% of available columns
+          break;
+      }
       
       // If this widget won't fit in current row, move to next row
       if (x + width > cols) {
@@ -790,12 +815,12 @@ const App = () => {
         x: x,
         y: y,
         w: width,
-        h: currentLayout.h
+        h: height
       };
       
       // Update position for next widget
       x += width;
-      maxHeightInRow = Math.max(maxHeightInRow, currentLayout.h);
+      maxHeightInRow = Math.max(maxHeightInRow, height);
       
       // If we're at the end of a row, reset x and increment y
       if (x >= cols) {
@@ -810,91 +835,67 @@ const App = () => {
 
   // Store original widget positions to restore when re-enabled
   const [originalWidgetLayouts] = useState<Record<string, WidgetLayout>>(() => {
-    // Layout and heights matching the image
+    // Layout with quicklinks always at the top
     return {
-      weather:        { i: 'weather',        x: 0,  y: 0,  w: 3, h: 12 },
-      quicklinks:     { i: 'quicklinks',     x: 3,  y: 0,  w: 6, h: 6 },
-      github:         { i: 'github',         x: 9,  y: 0,  w: 3, h: 11 },
+      quicklinks:     { i: 'quicklinks',     x: 3,  y: 0,  w: 6, h: 6 }, // Quicklinks at the very top
+      weather:        { i: 'weather',        x: 0,  y: 6,  w: 3, h: 12 }, // Weather starts after quicklinks
+      github:         { i: 'github',         x: 9,  y: 6,  w: 3, h: 11 },
 
-      music:          { i: 'music',          x: 0,  y: 12, w: 3, h: 14 },
+      music:          { i: 'music',          x: 0,  y: 18, w: 3, h: 14 },
       notesreminders: { i: 'notesreminders', x: 3,  y: 6,  w: 3, h: 20 },
       rss:            { i: 'rss',            x: 6,  y: 6,  w: 3, h: 20 },
-      browserhistory: { i: 'browserhistory', x: 9,  y: 11, w: 3, h: 15 },
+      browserhistory: { i: 'browserhistory', x: 9,  y: 17, w: 3, h: 15 },
+      dailyquotes:    { i: 'dailyquotes',    x: 0,  y: 32, w: 3, h: 12 }, // Daily Quotes widget
       
       // Widgets not in the screenshot, placed below the ones above, starting at y=26
       clock:          { i: 'clock',          x: 3,  y: 26, w: 3, h: 6 },
       calendar:       { i: 'calendar',       x: 6,  y: 26, w: 3, h: 12 },
-      timer:          { i: 'timer',          x: 9,  y: 26, w: 3, h: 8 },
+      timer:          { i: 'timer',          x: 9,  y: 32, w: 3, h: 8 },
     };
   });
 
-  // Function to move widgets vertically upward to fill gaps
+  // Function to move widgets vertically upward to fill gaps with MINIMAL compaction - preserving user positions
   const compactWidgetsVertically = useCallback((layouts: Record<string, WidgetLayout>, visibility: Record<string, boolean>) => {
     const visibleWidgets = availableWidgets.filter(w => visibility[w.id]);
     const newLayouts: Record<string, WidgetLayout> = { ...layouts };
     
-    // Group widgets by column (x position)
-    const columnGroups: Record<number, Array<{ widget: any, layout: WidgetLayout }>> = {};
-    
-    visibleWidgets.forEach(widget => {
-      const layout = layouts[widget.id];
-      if (layout) {
-        // Group by starting x position
-        const x = layout.x;
-        if (!columnGroups[x]) {
-          columnGroups[x] = [];
-        }
-        columnGroups[x].push({ widget, layout });
-      }
-    });
-    
-    // For each column group, sort by y position and compact vertically
-    Object.keys(columnGroups).forEach(xKey => {
-      const x = parseInt(xKey);
-      const widgets = columnGroups[x];
-      
-      // Sort widgets in this column by y position
-      widgets.sort((a, b) => a.layout.y - b.layout.y);
-      
-      // Compact vertically - move each widget up to fill gaps
-      let currentY = 0;
-      widgets.forEach(({ widget, layout }) => {
-        // Check if there's space above this widget
-        let canMoveUp = true;
-        let targetY = currentY;
-        
-        // Check for conflicts with widgets in overlapping columns
-        while (canMoveUp && targetY < layout.y) {
-          // Check if this position conflicts with any other visible widget
-          const hasConflict = visibleWidgets.some(otherWidget => {
-            if (otherWidget.id === widget.id) return false;
-            const otherLayout = newLayouts[otherWidget.id];
-            if (!otherLayout) return false;
-            
-            // Check if widgets overlap
-            const xOverlap = !(layout.x >= otherLayout.x + otherLayout.w || layout.x + layout.w <= otherLayout.x);
-            const yOverlap = !(targetY >= otherLayout.y + otherLayout.h || targetY + layout.h <= otherLayout.y);
-            
-            return xOverlap && yOverlap;
-          });
-          
-          if (hasConflict) {
-            targetY++;
-          } else {
-            canMoveUp = false;
-          }
-        }
-        
-        // Update the widget's position
-        newLayouts[widget.id] = {
-          ...layout,
-          y: targetY
-        };
-        
-        // Update currentY for the next widget in this column
-        currentY = Math.max(currentY, targetY + layout.h);
+    // Only do minimal compaction - preserve user positioning as much as possible
+    // Just remove completely empty rows if they exist
+    const sortedWidgets = visibleWidgets
+      .map(widget => ({ widget, layout: layouts[widget.id] }))
+      .filter(item => item.layout)
+      .sort((a, b) => {
+        if (a.layout.y !== b.layout.y) return a.layout.y - b.layout.y;
+        return a.layout.x - b.layout.x;
       });
-    });
+    
+    // Find completely empty rows (rows with no widgets at all)
+    const occupiedRows = new Set(sortedWidgets.map(({ layout }) => layout.y));
+    const maxY = Math.max(...sortedWidgets.map(({ layout }) => layout.y + layout.h));
+    
+    // Only move widgets up to fill completely empty rows, maintain relative positioning otherwise
+    const emptyRows: number[] = [];
+    for (let y = 0; y < maxY; y++) {
+      const hasAnyWidget = sortedWidgets.some(({ layout }) => 
+        y >= layout.y && y < layout.y + layout.h
+      );
+      if (!hasAnyWidget) {
+        emptyRows.push(y);
+      }
+    }
+    
+    // Only compact if there are completely empty rows
+    if (emptyRows.length > 0) {
+      sortedWidgets.forEach(({ widget, layout }) => {
+        const emptyRowsAbove = emptyRows.filter(row => row < layout.y).length;
+        if (emptyRowsAbove > 0) {
+          newLayouts[widget.id] = {
+            ...layout,
+            y: Math.max(0, layout.y - emptyRowsAbove)
+          };
+        }
+      });
+    }
     
     return newLayouts;
   }, [availableWidgets]);
@@ -929,19 +930,18 @@ const App = () => {
       console.groupEnd();
       
       if (prev[widgetId]) {
-        // Widget is being disabled - compact remaining widgets vertically
+        // Widget is being disabled - do MINIMAL compaction to preserve user layout
         const newLayouts = compactWidgetsVertically(widgetLayouts, newVisibility);
         setWidgetLayouts(newLayouts);
-        logWidgetLayouts(newLayouts, `Vertical Compact After Disabling ${widgetId.toUpperCase()}`);
+        logWidgetLayouts(newLayouts, `Minimal Compact After Disabling ${widgetId.toUpperCase()}`);
       } else {
-        // Widget is being enabled - restore to original position and compact
+        // Widget is being enabled - restore to original position, NO automatic compaction
         const restoredLayouts = {
           ...widgetLayouts,
           [widgetId]: originalWidgetLayouts[widgetId] || widgetLayouts[widgetId]
         };
-        const newLayouts = compactWidgetsVertically(restoredLayouts, newVisibility);
-        setWidgetLayouts(newLayouts);
-        logWidgetLayouts(newLayouts, `Restore and Compact After Enabling ${widgetId.toUpperCase()}`);
+        setWidgetLayouts(restoredLayouts);
+        logWidgetLayouts(restoredLayouts, `Restore Position for ${widgetId.toUpperCase()} (No Auto-Compact)`);
       }
       
       return newVisibility;
@@ -1059,7 +1059,7 @@ const App = () => {
     setSnackbarOpen(false);
   };
 
-  // Add handler to disable (delete) a widget in edit mode
+  // Add handler to disable (delete) a widget in edit mode - minimize compaction
   const handleDisableWidget = useCallback((widgetId: string) => {
     setTempWidgetVisibility(prev => {
       const newVisibility = {
@@ -1067,7 +1067,7 @@ const App = () => {
         [widgetId]: false,
       };
       
-      // Compact remaining widgets vertically
+      // Only do MINIMAL compaction to preserve user edits
       const newLayouts = compactWidgetsVertically(tempWidgetLayouts, newVisibility);
       setTempWidgetLayouts(newLayouts);
       
@@ -1077,15 +1077,16 @@ const App = () => {
       console.log(`📦 Deleted Widget: ${widgetId}`);
       console.log(`📍 Previous Position: (${tempWidgetLayouts[widgetId]?.x || 0}, ${tempWidgetLayouts[widgetId]?.y || 0})`);
       console.log(`📏 Previous Size: ${tempWidgetLayouts[widgetId]?.w || 0} × ${tempWidgetLayouts[widgetId]?.h || 0}`);
+      console.log(`💡 Note: Minimal compaction applied to preserve user layout`);
       console.groupEnd();
       
       // Log the repositioning
-      logWidgetLayouts(newLayouts, `Vertical Compact After Deleting ${widgetId.toUpperCase()} (Edit Mode)`);
+      logWidgetLayouts(newLayouts, `Minimal Compact After Deleting ${widgetId.toUpperCase()} (Edit Mode)`);
       
       return newVisibility;
     });
     
-    setSnackbarMessage('Widget deleted and layout reorganized');
+    setSnackbarMessage('Widget deleted with minimal layout changes');
     setSnackbarOpen(true);
   }, [tempWidgetLayouts, compactWidgetsVertically]);
 
@@ -1112,32 +1113,35 @@ const App = () => {
     setSnackbarOpen(true);
   };
 
-  // Auto-arrange widgets
+  // Auto-arrange widgets - make this EXPLICIT and opt-in only
   const handleAutoArrange = () => {
     const optimalLayout = generateOptimalLayout();
     setWidgetLayouts(optimalLayout);
     
     // Log the auto-arranged layout
-    logWidgetLayouts(optimalLayout, 'Auto-Arrange Applied');
+    logWidgetLayouts(optimalLayout, 'Manual Auto-Arrange Applied');
     
-    setSnackbarMessage('Widgets auto-arranged');
+    setSnackbarMessage('Widgets auto-arranged - positions optimized');
     setSnackbarOpen(true);
   };
 
-  // Effect to rearrange widgets when column count changes
+  // Effect to rearrange widgets when column count changes - REMOVE AUTO-ARRANGEMENT
   useEffect(() => {
     if (prevColumnCount.current !== columnCount.lg) {
-      // Column count has changed, rearrange widgets
-      const optimalLayout = generateOptimalLayout();
-      setWidgetLayouts(optimalLayout);
+      // Column count has changed - but DO NOT auto-arrange, just log the change
+      console.group(`📊 Column Count Changed`);
+      console.log(`📅 Timestamp: ${new Date().toLocaleString()}`);
+      console.log(`🔢 Changed: ${prevColumnCount.current} → ${columnCount.lg} columns`);
+      console.log(`💡 Note: Widget positions preserved. Use "Auto arrange" button if repositioning is needed.`);
+      console.groupEnd();
       
-      // Log the column count change and resulting layout
-      logWidgetLayouts(optimalLayout, `Column Count Changed (${prevColumnCount.current} → ${columnCount.lg})`);
-      
-      // Update the previous column count
+      // Update the previous column count but don't auto-arrange
       prevColumnCount.current = columnCount.lg;
+      
+      setSnackbarMessage(`Column count changed to ${columnCount.lg}. Widget positions preserved.`);
+      setSnackbarOpen(true);
     }
-  }, [columnCount.lg, generateOptimalLayout]);
+  }, [columnCount.lg]); // Removed generateOptimalLayout dependency
 
   const toggleColumnControls = () => {
     setShowColumnControls(!showColumnControls);
@@ -1308,7 +1312,7 @@ const App = () => {
     <Box sx={{
       minHeight: '100vh',
       maxHeight: '100vh', // Prevent vertical overflow
-      p: 2, // Reduced padding to save space
+      p: { xs: 1, sm: 1.5, md: 2 }, // Responsive padding
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center', // Center items horizontally
@@ -1319,7 +1323,13 @@ const App = () => {
       <CountryFlag />
       
       {/* Top Right Buttons Container */}
-      <Box sx={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 1 }}>
+      <Box sx={{ 
+        position: 'absolute', 
+        top: { xs: 8, sm: 12, md: 16 }, 
+        right: { xs: 8, sm: 12, md: 16 }, 
+        display: 'flex', 
+        gap: { xs: 0.5, sm: 0.75, md: 1 } 
+      }}>
         {/* Edit/Save Button - Moved to Top Right */}
         <IconButton
           aria-label="edit"
@@ -1331,8 +1341,8 @@ const App = () => {
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-            width: 48,
-            height: 48,
+            width: { xs: 40, sm: 44, md: 48 },
+            height: { xs: 40, sm: 44, md: 48 },
             transition: 'all 0.3s ease',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             '&:hover': {
@@ -1343,7 +1353,7 @@ const App = () => {
             }
           }}
         >
-          {editMode ? <SaveIcon /> : <EditIcon />}
+          {editMode ? <SaveIcon fontSize={window.innerWidth < 768 ? 'small' : 'medium'} /> : <EditIcon fontSize={window.innerWidth < 768 ? 'small' : 'medium'} />}
         </IconButton>
 
         {/* Cancel Edit Button - Only shows in edit mode, now top right */}
@@ -1363,8 +1373,8 @@ const App = () => {
               backdropFilter: 'blur(10px)',
               WebkitBackdropFilter: 'blur(10px)',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-              width: 48,
-              height: 48,
+              width: { xs: 40, sm: 44, md: 48 },
+              height: { xs: 40, sm: 44, md: 48 },
               transition: 'all 0.3s ease',
               border: '1px solid rgba(255, 255, 255, 0.1)',
               '&:hover': {
@@ -1375,7 +1385,7 @@ const App = () => {
               }
             }}
           >
-            <CloseIcon />
+            <CloseIcon fontSize={window.innerWidth < 768 ? 'small' : 'medium'} />
           </IconButton>
         )}
 
@@ -1390,8 +1400,8 @@ const App = () => {
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-            width: 48,
-            height: 48,
+            width: { xs: 40, sm: 44, md: 48 },
+            height: { xs: 40, sm: 44, md: 48 },
             transition: 'all 0.3s ease',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             '&:hover': {
@@ -1402,7 +1412,7 @@ const App = () => {
             }
           }}
         >
-          <SettingsIcon />
+          <SettingsIcon fontSize={window.innerWidth < 768 ? 'small' : 'medium'} />
         </IconButton>
       </Box>
 
@@ -1416,14 +1426,14 @@ const App = () => {
           <Box
             sx={{
               position: 'fixed',
-              top: 16,
+              top: { xs: 8, sm: 12, md: 16 },
               left: '50%',
               transform: 'translateX(-50%)',
               backgroundColor: 'rgba(76, 175, 80, 0.7)',
               color: 'white',
-              padding: '6px 16px',
+              padding: { xs: '4px 12px', sm: '5px 14px', md: '6px 16px' },
               borderRadius: '20px',
-              fontSize: '0.9rem',
+              fontSize: { xs: '0.75rem', sm: '0.8rem', md: '0.9rem' },
               backdropFilter: 'blur(10px)',
               WebkitBackdropFilter: 'blur(10px)',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
@@ -1431,14 +1441,19 @@ const App = () => {
               zIndex: 1000,
               display: 'flex',
               alignItems: 'center',
-              gap: 1
+              gap: { xs: 0.5, sm: 0.75, md: 1 },
+              // Hide detailed instructions on very small screens
+              '& .detailed-instructions': {
+                display: { xs: 'none', sm: 'flex' }
+              }
             }}
           >
             <DragIndicatorIcon fontSize="small" />
-            <span>Drag header to move</span>
-            <Box sx={{ mx: 1, color: 'rgba(255,255,255,0.5)' }}>•</Box>
-            <OpenWithIcon fontSize="small" />
-            <span>Resize from edges/corners</span>
+            <span className="detailed-instructions">Drag header to move</span>
+            <Box sx={{ display: { xs: 'block', sm: 'none' } }}>Edit Mode</Box>
+            <Box className="detailed-instructions" sx={{ mx: 1, color: 'rgba(255,255,255,0.5)' }}>•</Box>
+            <OpenWithIcon className="detailed-instructions" fontSize="small" />
+            <span className="detailed-instructions">Resize from edges/corners</span>
           </Box>
           
           {/* Column controls toggle button */}
@@ -1448,15 +1463,15 @@ const App = () => {
               onClick={toggleColumnControls}
               sx={{
                 position: 'fixed',
-                top: 16,
-                left: 16,
+                top: { xs: 8, sm: 12, md: 16 },
+                left: { xs: 8, sm: 12, md: 16 },
                 color: 'white',
                 backgroundColor: 'rgba(15, 15, 20, 0.7)',
                 backdropFilter: 'blur(10px)',
                 WebkitBackdropFilter: 'blur(10px)',
                 boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
-                width: 36,
-                height: 36,
+                width: { xs: 32, sm: 34, md: 36 },
+                height: { xs: 32, sm: 34, md: 36 },
                 transition: 'all 0.3s ease',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
                 '&:hover': {
@@ -1475,22 +1490,28 @@ const App = () => {
             <Box
               sx={{
                 position: 'fixed',
-                top: 16,
-                left: 60,
+                top: { xs: 8, sm: 12, md: 16 },
+                left: { xs: 48, sm: 52, md: 60 },
                 display: 'flex',
                 flexDirection: 'column',
                 backgroundColor: 'rgba(15, 15, 20, 0.8)',
                 backdropFilter: 'blur(10px)',
                 WebkitBackdropFilter: 'blur(10px)',
-                padding: '12px',
+                padding: { xs: '8px', sm: '10px', md: '12px' },
                 borderRadius: '8px',
                 zIndex: 1000,
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
+                minWidth: { xs: '120px', sm: '140px', md: '160px' }
               }}
             >
-              <Typography variant="caption" sx={{ color: 'white', mb: 1, textAlign: 'center' }}>
-                Column count: {columnCount.lg}
+              <Typography variant="caption" sx={{ 
+                color: 'white', 
+                mb: 1, 
+                textAlign: 'center',
+                fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' }
+              }}>
+                Columns: {columnCount.lg}
               </Typography>
               <ButtonGroup size="small" sx={{ mb: 1 }}>
                 <Button
@@ -1499,6 +1520,8 @@ const App = () => {
                   sx={{ 
                     color: 'white',
                     borderColor: 'rgba(255,255,255,0.3)', 
+                    minWidth: { xs: '28px', sm: '32px', md: '36px' },
+                    fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' },
                     '&:hover': { 
                       backgroundColor: 'rgba(255,255,255,0.1)',
                       borderColor: 'rgba(255,255,255,0.5)',
@@ -1513,6 +1536,8 @@ const App = () => {
                   sx={{ 
                     color: 'white',
                     borderColor: 'rgba(255,255,255,0.3)', 
+                    minWidth: { xs: '28px', sm: '32px', md: '36px' },
+                    fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' },
                     '&:hover': { 
                       backgroundColor: 'rgba(255,255,255,0.1)',
                       borderColor: 'rgba(255,255,255,0.5)',
@@ -1526,12 +1551,13 @@ const App = () => {
               {/* Auto-arrange button */}
               <Button
                 size="small"
-                startIcon={<AutorenewIcon />}
+                startIcon={<AutorenewIcon fontSize="small" />}
                 onClick={handleAutoArrange}
                 sx={{ 
                   color: 'white',
                   borderColor: 'rgba(255,255,255,0.3)', 
-                  fontSize: '0.75rem',
+                  fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                  padding: { xs: '4px 8px', sm: '6px 12px', md: '8px 16px' },
                   '&:hover': { 
                     backgroundColor: 'rgba(76,175,80,0.2)',
                   }
@@ -1549,7 +1575,13 @@ const App = () => {
         width: '100%', 
         flex: 1, 
         overflow: 'auto', // Allow scrolling only within the grid area
-        maxHeight: 'calc(100vh - 200px)', // Reserve space for header elements
+        maxHeight: { 
+          xs: 'calc(100vh - 120px)', // More space reserved on mobile
+          sm: 'calc(100vh - 160px)', 
+          md: 'calc(100vh - 200px)' 
+        },
+        // Add some responsive spacing
+        mt: { xs: 1, sm: 1.5, md: 2 }
       }}>
         <WidgetGrid 
           items={gridItems}
