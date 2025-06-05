@@ -1,96 +1,94 @@
-# Widgetopia - Your Custom Chrome New Tab Page
+# Widgetopia - Your Awesome Chrome & Firefox New Tab Page!
 
-Make your browser's new tab page useful and beautiful with customizable widgets!
+Make your browser's new tab page super useful and pretty with fun, customizable widgets!
 ![image](https://github.com/user-attachments/assets/c9164870-c5d2-4f7e-bb96-8f7d1f8d787d)
 
-## Features
+## ✨ Cool Features! ✨
 
-Widgetopia includes the following widgets:
+Widgetopia is packed with awesome widgets to make your new tab page the best!
 
-- **🌤️ Weather Widget** - Current weather conditions for your location
-- **📅 Calendar Widget** - View your schedule and upcoming events
-- **✅ Todo List** - Keep track of your tasks and goals
-- **🔗 Quick Links** - Easy access to your favorite websites
-- **🎵 Music Player** - Control your music playback
-- **📰 RSS Feed Reader** - Stay updated with your favorite news sources
-- **💻 GitHub Contributions** - Track your coding activity
-- **⏱️ Working Timer** - Pomodoro timer for productivity
-- **📚 Browser History** - View your most visited pages with detailed statistics
-- **🕐 Clock Widget** - Display current time (optional)
+### 🎮 Your Favorite Widgets:
+- **🌤️ Weather Pal** - See what the weather's like in your town!
+- **📅 Super Calendar** - Check your schedule and what's happening soon!
+- **📝 Smart Notes & Todos** - Write notes, make todo lists, and even connect to Google Calendar!
+- **🔗 Speedy Links** - Jump to your favorite websites super fast!
+- **🎵 Music Box** - Play your favorite tunes right from your new tab!
+- **📰 RSS News** - Get updates from your favorite websites and blogs!
+- **💻 GitHub Tracker** - See your coding contributions (for coders!)!
+- **⏱️ Focus Timer** - Use a Pomodoro timer to help you study or work better!
+- **📚 Browser History** - See your most visited pages and cool stats!
+- **📜 Daily Wisdom** - Get inspired with beautiful quotes every day that change automatically!
+- **🕐 Time Teller** - A pretty clock to see the time (you can turn it on or off)!
 
-All widgets are fully customizable and can be arranged, resized, and toggled on/off according to your preferences.
+### 🎨 Make It Look Amazing:
+- **🖼️ Your Own Wallpapers** - Upload any picture you like for your background!
+- **🎨 30+ Built-in Wallpapers** - Pick from tons of pretty pictures like anime, nature, gaming, and more!
+- **✨ Magic Themes** - Choose from awesome pre-made themes like "Emerald Serenity", "Crimson Frontier", "Neon Mystique"!
+- **🌈 Color Magic** - Change all the colors to match your style!
+- **💎 Glass Effects** - Make your widgets look super cool with see-through glass effects!
+- **🔄 Auto Wallpaper** - Let your wallpaper change automatically every hour for surprise!
 
-### 🎨 Customization Features
+### 🎯 Super Powers:
+- **🤏 Drag & Drop Fun** - Move your widgets anywhere you want!
+- **📏 Resize Magic** - Make widgets bigger or smaller just by dragging the corners!
+- **✏️ Edit Mode** - Click the edit button to rearrange everything perfectly!
+- **🏃‍♂️ Smart Saving** - Everything saves automatically so you never lose your setup!
+- **👤 Personal Greeting** - Add your name for a special "Hello" message!
+- **🔒 Super Safe** - All your stuff stays private in your browser!
 
-- **Custom Wallpapers** - Upload your own images as backgrounds (no size limit)
-- **Predefined Wallpapers** - Choose from beautiful built-in wallpaper options
-- **Drag & Drop Layout** - Arrange widgets exactly where you want them
-- **Resizable Widgets** - Adjust widget sizes to fit your needs
-- **Personalization** - Set your name and location for personalized greetings and weather
+## 🚀 Where to Get Widgetopia 🚀
 
-## How to Install (Easy Method)
+**For Mozilla Firefox (Super Easy!):**
+*   Get it directly from the Firefox store - just one click!
+*   Click here: **[Widgetopia on Firefox Add-ons](https://addons.mozilla.org/en-GB/firefox/addon/widgetopia/)**
 
+**For Google Chrome:**
 1.  **Download the latest version:**
-    *   Click [here](https://raw.githubusercontent.com/mshojaei77/Widgetopia/refs/heads/main/widgetopia.zip) to download `widgetopia`.
-
+    *   Click [here](https://raw.githubusercontent.com/mshojaei77/Widgetopia/refs/heads/main/widgetopia.zip) to download `widgetopia.zip`.
 2.  **Unzip the downloaded file:**
-    *   Find the downloaded `widgetopia-v1.0.0.zip` file (usually in your Downloads folder).
-    *   Right-click on the file and select "Extract All..." or "Unzip". This will create a new folder named `widgetopia-v1.0.0`.
+    *   Find the `widgetopia.zip` file (usually in your Downloads folder).
+    *   Right-click it and choose "Extract All..." or "Unzip". This makes a new folder called `widgetopia`.
+3.  **Add to Chrome:**
+    *   Open Chrome, type `chrome://extensions/` in the address bar, and press Enter.
+    *   Turn on **"Developer mode"** (look for a switch in the top-right corner).
+    *   Click **"Load unpacked"** (usually on the top-left).
+    *   Find the `widgetopia` folder you unzipped and select it.
+4.  **All Done!**
+    *   Open a new tab in Chrome to see your amazing Widgetopia dashboard!
 
-3.  **Load the extension in Chrome:**
-    *   Open Chrome and type `chrome://extensions/` in the address bar, then press Enter.
-    *   Turn on **"Developer mode"** using the toggle switch in the top-right corner.
-    *   Click the **"Load unpacked"** button (usually appears on the top-left).
-    *   Navigate to the folder where you unzipped the files (the `widgetopia-v1.0.0` folder) and select it.
+## 🎮 How to Use Widgetopia
 
-4.  **Enjoy!**
-    *   Open a new tab in Chrome to see your Widgetopia dashboard!
+1. **🎯 Open a new tab** - That's it! Widgetopia appears automatically!
+2. **⚙️ Click the settings gear** (top-right corner) to customize everything
+3. **✏️ Click the edit button** to move and resize your widgets
+4. **🎨 Pick a theme** or upload your own wallpaper
+5. **🎉 Have fun** making it perfect for you!
 
-## Frequently Asked Questions
+## 🤔 Got Questions?
 
-**Q: Will my data be shared or stored online?**
-A: No. All your data stays in your browser using Chrome's built-in storage.
+**Q: Does Widgetopia share my info?**
+A: Nope! Everything stays safe in your browser. We don't store your stuff online.
 
-**Q: Can I customize the layout?**
-A: Yes, there is drag-and-drop customization now !
+**Q: Can I change how it looks?**
+A: Yes! You can change colors, wallpapers, themes, and move widgets anywhere!
 
-**Q: How do I change settings?**
-A: Click the ⚙️ icon in the top-right corner of the new tab page.
+**Q: How do I move widgets around?**
+A: Click the edit button (pencil icon), then drag widgets by their header bar and resize from corners!
 
-**Q: What permissions does Widgetopia need?**
-A: Widgetopia requires minimal permissions:
-- **Storage**: To save your widget settings and preferences
-- **History**: To display your most visited pages in the Browser History widget (optional - only if you enable this widget)
+**Q: Can I get my Google Calendar events?**
+A: Yes! The Notes & Todos widget can connect to your Google Calendar safely.
 
-## Need Help?
+**Q: Why does it need permissions?**
+A: Widgetopia needs just a few permissions to work:
+- **Storage**: To save your widget settings and cool themes
+- **History**: Only if you turn on the Browser History widget
 
-If you encounter any issues or have questions, please [open an issue](https://github.com/mshojaei77/widgetopia/issues) on our GitHub repository.
+## 🆘 Need Help?
 
-## For Developers (Build from Source)
+If you have questions or find any problems, please [tell us here](https://github.com/mshojaei77/widgetopia/issues) and we'll help you out!
 
-If you want to build the extension from the source code:
-
-1. Clone this repository:
-   ```
-   git clone https://github.com/mshojaei77/widgetopia.git
-   ```
-
-2. Install dependencies using Bun:
-   ```
-   cd widgetopia
-   bun install
-   ```
-
-3. Build the extension:
-   ```
-   bun run build
-   ```
-   This creates a `dist` folder with the built extension.
-
-4. Load the unpacked extension in Chrome (follow steps 3c and 4 from the "Easy Method" above, but select the `dist` folder instead).
-
-If you're interested in contributing to Widgetopia, please see our [CONTRIBUTING.md](CONTRIBUTING.md) file.
+If you want to help make Widgetopia even better, check out our [CONTRIBUTING.md](CONTRIBUTING.md) file.
 
 ## License
 
-Widgetopia is released under the [MIT License](LICENSE). This means you are free to use, modify, distribute, and even use it commercially, as long as you include the original copyright notice. See the [LICENSE](LICENSE) file for full details.
+Widgetopia is shared under the [MIT License](LICENSE). This means you can use it, change it, and share it, even for business, as long as you include the original copyright. Check the [LICENSE](LICENSE) file for all the details.
