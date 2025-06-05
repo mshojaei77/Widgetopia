@@ -11,7 +11,9 @@
     "analyze-security": "node fix-security.js",
     "create-icons": "node create-icons.js",
     "preview": "vite preview",
-    "optimize": "npm run build:fast && npm run preview"
+    "optimize": "npm run build:fast && npm run preview",
+    "verify-build": "node verify-build.js",
+    "prepare-amo": "node prepare-amo-submission.js"
   },
   "devDependencies": {
     "@types/bun": "latest",
