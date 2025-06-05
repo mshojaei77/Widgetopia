@@ -12,14 +12,14 @@ export interface GlassThemeConfig {
 }
 
 export const defaultGlassConfig: GlassThemeConfig = {
-  blurIntensity: 4,
-  opacity: 0.03,
-  borderOpacity: 0.2,
-  shadowIntensity: 0.1,
+  blurIntensity: 3,
+  opacity: 0.01,
+  borderOpacity: 0.08,
+  shadowIntensity: 0.05,
   borderRadius: 22,
-  saturation: 1.2,
-  brightness: 1.0,
-  contrast: 1.0,
+  saturation: 1.0,
+  brightness: 0.95,
+  contrast: 0.98,
 };
 
 export const applyColorPalette = (palette: ColorPalette, glassConfig: GlassThemeConfig = defaultGlassConfig) => {
@@ -44,28 +44,28 @@ export const applyColorPalette = (palette: ColorPalette, glassConfig: GlassTheme
   const backdropFilter = `blur(${glassConfig.blurIntensity}px) saturate(${glassConfig.saturation}) brightness(${glassConfig.brightness}) contrast(${glassConfig.contrast})`;
   root.style.setProperty('--glass-backdrop-filter', backdropFilter);
   
-  // Apply glassmorphism CSS variables with enhanced effects
+  // Apply glassmorphism CSS variables with subtle effects
   root.style.setProperty('--glass-background', `rgba(${hexToRgb(palette.colors.primary)}, ${glassConfig.opacity})`);
   root.style.setProperty('--glass-border', `1px solid rgba(255, 255, 255, ${glassConfig.borderOpacity})`);
-  root.style.setProperty('--glass-shadow', `0 8px 32px rgba(0, 0, 0, ${glassConfig.shadowIntensity})`);
+  root.style.setProperty('--glass-shadow', `0 4px 16px rgba(0, 0, 0, ${glassConfig.shadowIntensity})`);
   
-  // Enhanced glass effects for different component types
-  root.style.setProperty('--glass-card-bg', `linear-gradient(135deg, rgba(${hexToRgb(palette.colors.primary)}, ${glassConfig.opacity * 1.2}) 0%, rgba(${hexToRgb(palette.colors.secondary)}, ${glassConfig.opacity * 0.8}) 100%)`);
-  root.style.setProperty('--glass-button-bg', `rgba(${hexToRgb(palette.colors.primary)}, ${glassConfig.opacity * 2})`);
-  root.style.setProperty('--glass-button-hover-bg', `rgba(${hexToRgb(palette.colors.primaryLight)}, ${glassConfig.opacity * 3})`);
-  root.style.setProperty('--glass-input-bg', `rgba(${hexToRgb(palette.colors.backgroundSecondary)}, ${glassConfig.opacity * 3})`);
-  root.style.setProperty('--glass-modal-bg', `rgba(${hexToRgb(palette.colors.backgroundPrimary)}, 0.95)`);
+  // Subtle glass effects for different component types
+  root.style.setProperty('--glass-card-bg', `rgba(${hexToRgb(palette.colors.backgroundPrimary)}, ${Math.min(0.05, glassConfig.opacity * 8)})`);
+  root.style.setProperty('--glass-button-bg', `rgba(${hexToRgb(palette.colors.primary)}, ${Math.min(0.08, glassConfig.opacity * 8)})`);
+  root.style.setProperty('--glass-button-hover-bg', `rgba(${hexToRgb(palette.colors.primaryLight)}, ${Math.min(0.12, glassConfig.opacity * 12)})`);
+  root.style.setProperty('--glass-input-bg', `rgba(${hexToRgb(palette.colors.backgroundSecondary)}, ${Math.min(0.08, glassConfig.opacity * 8)})`);
+  root.style.setProperty('--glass-modal-bg', `rgba(${hexToRgb(palette.colors.backgroundPrimary)}, 0.85)`);
   
-  // Enhanced dropdown-specific glass effects
-  const dropdownBlur = Math.max(16, glassConfig.blurIntensity * 1.5); // Stronger blur for dropdowns
-  const dropdownOpacity = Math.min(0.95, glassConfig.opacity * 8); // Higher opacity for better readability
-  const dropdownBorderOpacity = Math.min(0.4, glassConfig.borderOpacity * 2); // More visible borders
+  // Subtle dropdown-specific glass effects
+  const dropdownBlur = Math.min(7, Math.max(3, glassConfig.blurIntensity * 1.2)); // Capped blur for dropdowns
+  const dropdownOpacity = Math.min(0.08, glassConfig.opacity * 8); // Low opacity for wallpaper visibility
+  const dropdownBorderOpacity = Math.min(0.15, glassConfig.borderOpacity * 1.5); // Subtle borders
   
   root.style.setProperty('--glass-dropdown-blur', `${dropdownBlur}px`);
-  root.style.setProperty('--glass-dropdown-backdrop-filter', `blur(${dropdownBlur}px) saturate(${glassConfig.saturation * 1.2}) brightness(${glassConfig.brightness * 1.1}) contrast(${glassConfig.contrast * 1.1})`);
-  root.style.setProperty('--glass-dropdown-bg', `linear-gradient(135deg, rgba(${hexToRgb(palette.colors.backgroundPrimary)}, ${dropdownOpacity}) 0%, rgba(${hexToRgb(palette.colors.backgroundSecondary)}, ${dropdownOpacity * 0.9}) 100%)`);
+  root.style.setProperty('--glass-dropdown-backdrop-filter', `blur(${dropdownBlur}px) saturate(${glassConfig.saturation}) brightness(${glassConfig.brightness}) contrast(${glassConfig.contrast})`);
+  root.style.setProperty('--glass-dropdown-bg', `rgba(${hexToRgb(palette.colors.backgroundPrimary)}, ${dropdownOpacity})`);
   root.style.setProperty('--glass-dropdown-border', `1px solid rgba(255, 255, 255, ${dropdownBorderOpacity})`);
-  root.style.setProperty('--glass-dropdown-shadow', `0 12px 48px rgba(0, 0, 0, ${glassConfig.shadowIntensity * 1.5}), 0 4px 16px rgba(0, 0, 0, ${glassConfig.shadowIntensity * 0.8})`);
+  root.style.setProperty('--glass-dropdown-shadow', `0 6px 24px rgba(0, 0, 0, ${glassConfig.shadowIntensity * 0.8})`);
   
   // Dropdown menu item effects
   root.style.setProperty('--glass-dropdown-item-hover-bg', `rgba(${hexToRgb(palette.colors.primary)}, ${glassConfig.opacity * 2})`);
@@ -78,10 +78,10 @@ export const applyColorPalette = (palette: ColorPalette, glassConfig: GlassTheme
   root.style.setProperty('--glass-select-hover-border', `1px solid rgba(${hexToRgb(palette.colors.primary)}, 0.6)`);
   root.style.setProperty('--glass-select-focus-border', `2px solid rgba(${hexToRgb(palette.colors.accent)}, 0.8)`);
   
-  // Widget-specific glass effects
-  root.style.setProperty('--glass-widget-bg', `linear-gradient(135deg, rgba(${hexToRgb(palette.colors.glassBackground.replace(/[^\d,]/g, ''))}, ${glassConfig.opacity}) 0%, rgba(${hexToRgb(palette.colors.backgroundSecondary)}, ${glassConfig.opacity * 0.5}) 100%)`);
+  // Widget-specific glass effects - very subtle with border separation
+  root.style.setProperty('--glass-widget-bg', `rgba(20, 20, 30, ${Math.min(0.05, glassConfig.opacity * 5)})`);
   root.style.setProperty('--glass-widget-border', `1px solid rgba(255, 255, 255, ${glassConfig.borderOpacity * 0.8})`);
-  root.style.setProperty('--glass-widget-shadow', `0 4px 16px rgba(0, 0, 0, ${glassConfig.shadowIntensity * 0.8})`);
+  root.style.setProperty('--glass-widget-shadow', `0 1px 3px rgba(0, 0, 0, ${glassConfig.shadowIntensity * 0.8}), inset 0 0 0 1px rgba(255, 255, 255, ${glassConfig.borderOpacity * 0.3})`);
   
   // Apply text colors with proper contrast
   root.style.setProperty('--text-on-glass', palette.colors.textPrimary);
@@ -169,7 +169,7 @@ export const getStoredGlassConfig = (): GlassThemeConfig => {
 export const createGlassStyle = (
   backgroundOpacity: number = 0.1,
   borderOpacity: number = 0.2,
-  blurAmount: number = 12,
+  blurAmount: number = 6,
   saturation: number = 1.8,
   brightness: number = 1.1
 ) => ({
@@ -223,7 +223,7 @@ export const createGlassGradient = (color1: string, color2: string, opacity: num
 export const createDropdownGlassStyle = (
   backgroundOpacity: number = 0.95,
   borderOpacity: number = 0.4,
-  blurAmount: number = 20,
+  blurAmount: number = 7,
   saturation: number = 2.0,
   brightness: number = 1.15,
   contrast: number = 1.25
@@ -268,7 +268,7 @@ export const createDropdownGlassStyle = (
 export const createSelectFieldGlassStyle = (
   backgroundOpacity: number = 0.4,
   borderOpacity: number = 0.3,
-  blurAmount: number = 8,
+  blurAmount: number = 6,
   saturation: number = 1.6,
   brightness: number = 1.05
 ) => ({
@@ -317,65 +317,65 @@ export const createMenuItemGlassStyle = () => ({
 // Preset glass configurations for different use cases
 export const glassPresets = {
   subtle: {
-    blurIntensity: 8,
-    opacity: 0.05,
-    borderOpacity: 0.1,
-    shadowIntensity: 0.2,
+    blurIntensity: 2,
+    opacity: 0.02,
+    borderOpacity: 0.05,
+    shadowIntensity: 0.08,
     borderRadius: 12,
-    saturation: 1.5,
-    brightness: 1.05,
-    contrast: 1.1,
+    saturation: 1.0,
+    brightness: 0.98,
+    contrast: 1.0,
   },
   moderate: {
-    blurIntensity: 12,
-    opacity: 0.1,
-    borderOpacity: 0.2,
-    shadowIntensity: 0.3,
+    blurIntensity: 4,
+    opacity: 0.04,
+    borderOpacity: 0.08,
+    shadowIntensity: 0.12,
     borderRadius: 16,
-    saturation: 1.8,
-    brightness: 1.1,
-    contrast: 1.2,
+    saturation: 1.0,
+    brightness: 0.96,
+    contrast: 1.0,
   },
   intense: {
-    blurIntensity: 20,
-    opacity: 0.15,
-    borderOpacity: 0.3,
-    shadowIntensity: 0.4,
+    blurIntensity: 5,
+    opacity: 0.06,
+    borderOpacity: 0.12,
+    shadowIntensity: 0.15,
     borderRadius: 20,
-    saturation: 2.2,
-    brightness: 1.2,
-    contrast: 1.3,
+    saturation: 1.05,
+    brightness: 0.94,
+    contrast: 1.02,
   },
   minimal: {
-    blurIntensity: 4,
-    opacity: 0.03,
-    borderOpacity: 0.05,
-    shadowIntensity: 0.1,
+    blurIntensity: 1,
+    opacity: 0.01,
+    borderOpacity: 0.03,
+    shadowIntensity: 0.05,
     borderRadius: 22,
-    saturation: 1.2,
-    brightness: 1.0,
+    saturation: 1.0,
+    brightness: 0.98,
     contrast: 1.0,
   },
   // New dropdown-optimized presets
   dropdownOptimal: {
-    blurIntensity: 16,
+    blurIntensity: 5,
     opacity: 0.12,
     borderOpacity: 0.25,
     shadowIntensity: 0.35,
     borderRadius: 14,
-    saturation: 2.0,
-    brightness: 1.15,
-    contrast: 1.25,
+    saturation: 1.0,
+    brightness: 0.95,
+    contrast: 1.0,
   },
   dropdownSubtle: {
-    blurIntensity: 12,
+    blurIntensity: 3,
     opacity: 0.08,
     borderOpacity: 0.18,
     shadowIntensity: 0.25,
     borderRadius: 12,
-    saturation: 1.7,
-    brightness: 1.08,
-    contrast: 1.15,
+    saturation: 1.0,
+    brightness: 0.98,
+    contrast: 1.0,
   }
 };
 

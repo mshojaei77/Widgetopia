@@ -466,8 +466,8 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm,
                     height: 52,
                     borderRadius: 'var(--radius-md)',
                     bgcolor: isBeingDragged ? 'rgba(255, 255, 255, 0.25)' : bubbleBgColor,
-                    backdropFilter: 'blur(8px) saturate(150%)', // Enhanced glass effect
-                    WebkitBackdropFilter: 'blur(8px) saturate(150%)',
+                    backdropFilter: 'blur(6px) saturate(120%)', // Enhanced glass effect
+                WebkitBackdropFilter: 'blur(6px) saturate(120%)',
                     transition: 'transform 0.2s ease-out, background-color 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out',
                     overflow: 'hidden',
                     border: isFavicon ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(255, 255, 255, 0.2)', // Subtle border for all
@@ -534,8 +534,8 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, setLinks, onShowAddForm,
                 height: 52,
                 borderRadius: 'var(--radius-md)',
                 bgcolor: 'rgba(255, 255, 255, 0.1)', // Consistent with icon style
-                backdropFilter: 'blur(8px) saturate(150%)',
-                WebkitBackdropFilter: 'blur(8px) saturate(150%)',
+                backdropFilter: 'blur(6px) saturate(120%)',
+                WebkitBackdropFilter: 'blur(6px) saturate(120%)',
                 color: 'var(--text-light)',
                 border: '1px solid rgba(255, 255, 255, 0.2)',
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.1)',

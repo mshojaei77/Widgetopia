@@ -1128,7 +1128,7 @@ const NotesReminders: React.FC = () => {
                       : item.type === 'todo' && (item as Todo).dueDate && isPast((item as Todo).dueDate!) && !(item as Todo).completed
                       ? 'rgba(244, 67, 54, 0.1)'
                       : 'rgba(255, 255, 255, 0.05)',
-                    backdropFilter: 'blur(10px)',
+                    backdropFilter: 'blur(7px)',
                     border: `1px solid rgba(255, 255, 255, 0.1)`,
                     opacity: 'completed' in item && item.completed ? 0.7 : 1,
                   }}
@@ -1303,7 +1303,7 @@ const NotesReminders: React.FC = () => {
         PaperProps={{
           sx: {
             backgroundColor: 'rgba(10, 10, 15, 0.95)',
-            backdropFilter: 'blur(20px)',
+            backdropFilter: 'blur(7px)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             borderRadius: 'var(--radius-lg)',
           }
@@ -1512,7 +1512,7 @@ const NotesReminders: React.FC = () => {
         PaperProps={{
           sx: {
             backgroundColor: 'rgba(10, 10, 15, 0.95)',
-            backdropFilter: 'blur(20px)',
+            backdropFilter: 'blur(7px)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             borderRadius: 'var(--radius-lg)',
             maxHeight: '80vh',

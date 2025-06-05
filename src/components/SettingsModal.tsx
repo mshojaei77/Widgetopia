@@ -307,8 +307,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 padding: 0,
                 overflow: 'hidden',
                 background: 'rgba(10, 10, 15, 0.97) !important',
-                backdropFilter: 'blur(8px) !important',
-                WebkitBackdropFilter: 'blur(8px) !important',
+                backdropFilter: 'blur(7px) !important',
+        WebkitBackdropFilter: 'blur(7px) !important',
                 boxShadow: '0 15px 40px rgba(0, 0, 0, 0.5) !important',
                 border: '1px solid rgba(255, 255, 255, 0.05) !important',
                 display: 'flex',
@@ -837,8 +837,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             justifyContent: 'center',
                             p: 3,
                             background: 'linear-gradient(145deg, rgba(20, 20, 30, 0.8), rgba(15, 15, 25, 0.9))',
-                            backdropFilter: 'blur(20px)',
-                            WebkitBackdropFilter: 'blur(20px)',
+                            backdropFilter: 'blur(7px)',
+                            WebkitBackdropFilter: 'blur(7px)',
                             borderRadius: '20px',
                             border: '1px solid rgba(255, 255, 255, 0.06)',
                             boxShadow: '0 15px 35px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(255, 255, 255, 0.04) inset'
@@ -872,8 +872,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                   background: selectedCategory === 'all' 
                                     ? 'linear-gradient(135deg, var(--primary-color), #667eea)' 
                                     : 'linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02))',
-                                  backdropFilter: 'blur(10px)',
-                                  WebkitBackdropFilter: 'blur(10px)',
+                                  backdropFilter: 'blur(7px)',
+                                  WebkitBackdropFilter: 'blur(7px)',
                                   borderColor: selectedCategory === 'all' 
                                     ? 'transparent' 
                                     : 'rgba(255, 255, 255, 0.15)',
@@ -908,8 +908,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                     background: selectedCategory === category 
                                       ? 'linear-gradient(135deg, var(--primary-color), #667eea)' 
                                       : 'linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02))',
-                                    backdropFilter: 'blur(10px)',
-                                    WebkitBackdropFilter: 'blur(10px)',
+                                    backdropFilter: 'blur(7px)',
+                                    WebkitBackdropFilter: 'blur(7px)',
                                     borderColor: selectedCategory === category 
                                       ? 'transparent' 
                                       : 'rgba(255, 255, 255, 0.15)',
@@ -963,8 +963,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                   sx={{
                                     cursor: 'pointer',
                                     background: 'linear-gradient(145deg, rgba(25, 25, 35, 0.95), rgba(20, 20, 30, 0.9))',
-                                    backdropFilter: 'blur(20px)',
-                                    WebkitBackdropFilter: 'blur(20px)',
+                                    backdropFilter: 'blur(7px)',
+                                    WebkitBackdropFilter: 'blur(7px)',
                                     border: currentWallpaper === theme.wallpaper 
                                       ? '2px solid var(--primary-color)' 
                                       : '1px solid rgba(255, 255, 255, 0.08)',
@@ -1072,8 +1072,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                           color: 'rgba(255, 255, 255, 0.9)',
                                           fontSize: '0.75rem',
                                           fontWeight: 500,
-                                          backdropFilter: 'blur(10px)',
-                                          WebkitBackdropFilter: 'blur(10px)',
+                                          backdropFilter: 'blur(7px)',
+                                          WebkitBackdropFilter: 'blur(7px)',
                                           border: '1px solid rgba(255, 255, 255, 0.1)',
                                           textTransform: 'capitalize'
                                         }}
@@ -1375,7 +1375,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                 value={glassConfig.blurIntensity}
                                 onChange={(_, value) => onGlassConfigChange({ blurIntensity: value as number })}
                                 min={0}
-                                max={30}
+                                max={7}
                                 step={1}
                                 sx={{
                                   color: 'var(--primary-color)',
@@ -1443,10 +1443,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                     size="small"
                                     onClick={() => {
                                       const presets = {
-                                        minimal: { blurIntensity: 4, opacity: 0.03, borderOpacity: 0.05, shadowIntensity: 0.1, borderRadius: 8, saturation: 1.2, brightness: 1.0, contrast: 1.0 },
-                                        subtle: { blurIntensity: 8, opacity: 0.05, borderOpacity: 0.1, shadowIntensity: 0.2, borderRadius: 12, saturation: 1.5, brightness: 1.05, contrast: 1.1 },
-                                        moderate: { blurIntensity: 12, opacity: 0.1, borderOpacity: 0.2, shadowIntensity: 0.3, borderRadius: 16, saturation: 1.8, brightness: 1.1, contrast: 1.2 },
-                                        intense: { blurIntensity: 20, opacity: 0.15, borderOpacity: 0.3, shadowIntensity: 0.4, borderRadius: 20, saturation: 2.2, brightness: 1.2, contrast: 1.3 }
+                                        minimal: { blurIntensity: 2, opacity: 0.03, borderOpacity: 0.05, shadowIntensity: 0.1, borderRadius: 8, saturation: 1.2, brightness: 1.0, contrast: 1.0 },
+                                        subtle: { blurIntensity: 4, opacity: 0.05, borderOpacity: 0.1, shadowIntensity: 0.2, borderRadius: 12, saturation: 1.5, brightness: 1.05, contrast: 1.1 },
+                                        moderate: { blurIntensity: 6, opacity: 0.1, borderOpacity: 0.2, shadowIntensity: 0.3, borderRadius: 16, saturation: 1.8, brightness: 1.1, contrast: 1.2 },
+                                        intense: { blurIntensity: 7, opacity: 0.15, borderOpacity: 0.3, shadowIntensity: 0.4, borderRadius: 20, saturation: 2.2, brightness: 1.2, contrast: 1.3 }
                                       };
                                       onGlassConfigChange(presets[preset.key as keyof typeof presets]);
                                     }}

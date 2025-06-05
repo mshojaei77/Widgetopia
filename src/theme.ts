@@ -327,8 +327,8 @@ const theme = createTheme({
           },
           '& .MuiSelect-select': {
             backgroundColor: 'var(--glass-select-bg)',
-            backdropFilter: 'blur(8px) saturate(1.6) brightness(1.05)',
-            WebkitBackdropFilter: 'blur(8px) saturate(1.6) brightness(1.05)',
+            backdropFilter: 'blur(6px) saturate(1.2) brightness(1.02)',
+            WebkitBackdropFilter: 'blur(6px) saturate(1.2) brightness(1.02)',
             borderRadius: 'var(--radius-md)',
             color: primaryTextColor,
             transition: 'all 0.2s ease-in-out',

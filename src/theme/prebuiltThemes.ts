@@ -348,7 +348,7 @@ const knightColorPalette: ColorPalette = {
 
 // Glass configurations for different themes
 const intensiveGlass: GlassThemeConfig = {
-  blurIntensity: 20,
+  blurIntensity: 7,
   opacity: 0.15,
   borderOpacity: 0.35,
   shadowIntensity: 0.45,
@@ -359,7 +359,7 @@ const intensiveGlass: GlassThemeConfig = {
 };
 
 const moderateGlass: GlassThemeConfig = {
-  blurIntensity: 14,
+  blurIntensity: 5,
   opacity: 0.12,
   borderOpacity: 0.25,
   shadowIntensity: 0.35,
@@ -370,7 +370,7 @@ const moderateGlass: GlassThemeConfig = {
 };
 
 const subtleGlass: GlassThemeConfig = {
-  blurIntensity: 10,
+  blurIntensity: 3,
   opacity: 0.08,
   borderOpacity: 0.2,
   shadowIntensity: 0.25,
@@ -381,7 +381,7 @@ const subtleGlass: GlassThemeConfig = {
 };
 
 const minimalGlass: GlassThemeConfig = {
-  blurIntensity: 6,
+  blurIntensity: 2,
   opacity: 0.05,
   borderOpacity: 0.15,
   shadowIntensity: 0.15,

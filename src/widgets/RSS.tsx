@@ -486,7 +486,7 @@ const RSS: React.FC = () => {
             maxWidth: '500px', // Max width for the dialog
             borderRadius: 'var(--radius-md)',
             bgcolor: 'var(--background-secondary-alpha)',
-            backdropFilter: 'blur(10px)',
+            backdropFilter: 'blur(7px)',
           }
         }}
       >

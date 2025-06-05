@@ -515,7 +515,7 @@ const Github: React.FC = () => {
         PaperProps={{
           sx: {
             backgroundColor: 'rgba(22, 27, 34, 0.9)',
-            backdropFilter: 'blur(10px)',
+            backdropFilter: 'blur(7px)',
             color: 'var(--text-color)',
             borderRadius: 'var(--radius-md)',
             maxWidth: '450px',

@@ -390,8 +390,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ placeholder = "Search the web..."
         sx={{
           '& .MuiOutlinedInput-root': {
             backgroundColor: 'rgba(30, 30, 40, 0.8)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
+            backdropFilter: 'blur(7px)',
+            WebkitBackdropFilter: 'blur(7px)',
             borderRadius: '25px',
             '& fieldset': {
               borderColor: 'rgba(255, 255, 255, 0.2)',
@@ -427,8 +427,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ placeholder = "Search the web..."
             right: 0,
             mt: 1,
             backgroundColor: 'rgba(30, 30, 40, 0.95)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
+            backdropFilter: 'blur(7px)',
+            WebkitBackdropFilter: 'blur(7px)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             borderRadius: '12px',
             overflow: 'hidden',
