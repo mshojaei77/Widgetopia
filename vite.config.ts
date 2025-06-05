@@ -15,6 +15,19 @@ export default defineConfig({
         copyFileSync('manifest.json', 'dist/manifest.json');
         console.log('Manifest file copied to dist directory');
       }
+    },
+    {
+      name: 'normalize-paths',
+      generateBundle(options, bundle) {
+        // Normalize all file paths to use forward slashes
+        Object.keys(bundle).forEach(fileName => {
+          const normalizedFileName = fileName.replace(/\\/g, '/');
+          if (normalizedFileName !== fileName) {
+            bundle[normalizedFileName] = bundle[fileName];
+            delete bundle[fileName];
+          }
+        });
+      }
     }
   ],
   build: {
@@ -24,6 +37,14 @@ export default defineConfig({
       compress: {
         drop_console: true,
         drop_debugger: true,
+        // Security: Remove unsafe patterns
+        unsafe: false,
+        unsafe_Function: false,
+        unsafe_regexp: false,
+      },
+      mangle: {
+        // Avoid mangling that could create Function constructors
+        reserved: ['Function', 'eval'],
       },
     },
     rollupOptions: {
@@ -43,6 +64,9 @@ export default defineConfig({
           }
           return `assets/[name].[ext]`;
         },
+        // Ensure paths use forward slashes in archives
+        dir: 'dist',
+        format: 'es',
         manualChunks: {
           vendor: ['react', 'react-dom'],
           mui: ['@mui/material', '@mui/icons-material'],
@@ -84,14 +108,7 @@ export default defineConfig({
     minifySyntax: true,
     minifyWhitespace: true,
   },
-  css: {
-    codeSplit: true,
-    preprocessorOptions: {
-      css: {
-        charset: false,
-      },
-    },
-  },
+
   experimental: {
     renderBuiltUrl(filename) {
       return filename;

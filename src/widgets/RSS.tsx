@@ -295,9 +295,10 @@ const RSS: React.FC = () => {
   };
 
   const formatDescription = (html: string) => {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    const text = tmp.textContent || tmp.innerText || '';
+    // Safely extract text content without using innerHTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const text = doc.body.textContent || doc.body.innerText || '';
     return text.substring(0, 120) + (text.length > 120 ? '...' : '');
   };
 
